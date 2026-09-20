@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Contract } from "ethers";
 import {
   SettlementBuilder,
   assertPublishable,
   hashTelemetry,
+  nextSettleableEpoch,
   type EpochTelemetry,
   type GpuSpec,
   type PoolConfig,
@@ -22,7 +24,7 @@ import {
   tarifaParaElBruto,
 } from "@/lib/defaults";
 import { acortarDireccion, formatUnidades, formatearDuracion, parseUnidades, porcentaje } from "@/lib/format";
-import { buildSafeTransaction } from "@/lib/calldata";
+import { POOL_SPLITTER_ABI, buildSafeTransaction } from "@/lib/calldata";
 import { lectorDeCadena } from "@/lib/lector";
 import { Historial } from "@/components/Historial";
 import { FirmaMultisig } from "@/components/FirmaMultisig";
@@ -51,11 +53,14 @@ export default function Page() {
   const [splitterAddress, setSplitterAddress] = useState<string>(CONTRATOS.splitter);
   const [saldoBaul, setSaldoBaul] = useState<bigint | null>(null);
 
-  // Se lee el saldo del baul para poder ajustar la simulacion a fondos reales.
-  // No hace falta wallet: es una lectura publica de la cadena.
+  // Se lee el saldo del baul para poder ajustar la simulacion a fondos reales, y el
+  // ultimo periodo liquidado para no proponer uno que el contrato ya uso. No hace
+  // falta wallet: son lecturas publicas de la cadena.
   useEffect(() => {
     let vigente = true;
-    lectorDeCadena(CADENA.rpc, 133)
+    const lector = lectorDeCadena(CADENA.rpc, 133);
+
+    lector
       .getBalance(CONTRATOS.baul)
       .then((saldo) => {
         if (vigente) setSaldoBaul(saldo);
@@ -64,6 +69,18 @@ export default function Page() {
         // Sin saldo a la vista la pantalla sigue siendo usable con los valores
         // por defecto; no vale la pena molestar con un error por esto.
       });
+
+    // El splitter rechaza un periodo que no sea mayor al ultimo liquidado. Si la
+    // pantalla arrancara en uno ya usado, la liquidacion revertiria al ejecutarla.
+    (new Contract(CONTRATOS.splitter, POOL_SPLITTER_ABI, lector).getFunction("lastSettledEpoch")() as Promise<bigint>)
+      .then((ultimo) => {
+        if (vigente) setEpochId((actual) => Math.max(actual, nextSettleableEpoch(ultimo)));
+      })
+      .catch(() => {
+        // Sin el dato se conserva el periodo por defecto; FirmaMultisig vuelve a
+        // comprobarlo antes de dejar firmar.
+      });
+
     return () => {
       vigente = false;
     };
@@ -245,7 +262,7 @@ export default function Page() {
       </div>
 
       <footer className="pie">
-        The hardware and telemetry data on this screen are simulated and editable here. The payout calculation, the audit hash and the transaction that gets signed are real: the interface runs exactly the same engine that the tests cover and the contract enforces.
+        The hardware and telemetry data on this screen are demo data, editable here. The payout calculation, the audit hash and the transaction that gets signed are real: the interface runs exactly the same engine that the tests cover and the contract enforces.
       </footer>
     </div>
   );
@@ -500,7 +517,7 @@ function Telemetria({
     <section className="tarjeta">
       <h2>Period telemetry</h2>
       <p className="subtitulo">
-        Simulated data, editable here. In production it would come from the mining software's API.
+        Demo data, editable here. In production it would come from the mining software's API.
       </p>
 
       <div className="campos tres">

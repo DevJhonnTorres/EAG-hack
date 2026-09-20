@@ -7,6 +7,7 @@ export * from "./domain/settlement.js";
 export * from "./domain/telemetryHash.js";
 export * from "./domain/bridge.js";
 export * from "./domain/decimal.js";
+export * from "./domain/epoch.js";
 export * from "./adapters/mockTelemetry.js";
 export * from "./adapters/safe.js";
 export * from "./adapters/blockscout.js";

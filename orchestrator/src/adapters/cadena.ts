@@ -77,7 +77,13 @@ export function mensajeDeWallet(causa: unknown): string {
     return "The wallet already has an open request from this page. Open the extension, approve or reject that request, and try again.";
   }
   if (codigo === RECHAZADA_POR_LA_PERSONA) return "You rejected the request in the wallet.";
-  return causa instanceof Error ? causa.message : String(causa);
+  const original = causa instanceof Error ? causa.message : String(causa);
+  // GS013: el Safe intento ejecutar la llamada interna y esta fallo. Con gas de
+  // seguridad en cero, el Safe revierte todo en vez de marcarla como fallida.
+  if (original.includes("GS013")) {
+    return "The Safe could not run the settlement (GS013): the call to the splitter would revert on-chain. Check that the period is higher than the last settled one, that the recipients are registered, and that the vault holds enough funds.";
+  }
+  return original;
 }
 
 export interface AsegurarCadenaOpciones {

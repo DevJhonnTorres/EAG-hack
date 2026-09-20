@@ -7,6 +7,7 @@ import {
   buildSafeTransaction,
   computeSafeTxHash,
   encodeSignatures,
+  isEpochSettleable,
   mensajeDeWallet,
   safeDomain,
   type OwnerSignature,
@@ -16,7 +17,7 @@ import {
 import { SAFE_ABI } from "@/lib/safeAbi";
 import { asegurarCadena, conectar, haySoporteDeWallet, type DatosCadena } from "@/lib/wallet";
 import { lectorDeCadena } from "@/lib/lector";
-import { encodeSettle } from "@/lib/calldata";
+import { POOL_SPLITTER_ABI, encodeSettle } from "@/lib/calldata";
 import { acortarDireccion, formatUnidades } from "@/lib/format";
 
 interface EstadoSafe {
@@ -26,6 +27,8 @@ interface EstadoSafe {
   readonly balance: bigint;
   /** Hash que devuelve el propio contrato, para contrastar contra el calculado. */
   readonly hashSegunContrato: string;
+  /** Ultimo periodo que el splitter ya liquido. `null` si no se pudo leer. */
+  readonly ultimoPeriodo: bigint | null;
 }
 
 export function FirmaMultisig({
@@ -107,7 +110,17 @@ export function FirmaMultisig({
         )) as string;
       }
 
-      setEstado({ nonce, threshold: Number(threshold), owners, balance, hashSegunContrato });
+      // Se lee aparte: si falla (por ejemplo, con una direccion de splitter a medias) no
+      // debe impedir mostrar el resto del estado del Safe.
+      let ultimoPeriodo: bigint | null = null;
+      try {
+        const splitter = new Contract(splitterAddress, POOL_SPLITTER_ABI, lector);
+        ultimoPeriodo = (await splitter.getFunction("lastSettledEpoch")()) as bigint;
+      } catch {
+        ultimoPeriodo = null;
+      }
+
+      setEstado({ nonce, threshold: Number(threshold), owners, balance, hashSegunContrato, ultimoPeriodo });
     } catch (causa) {
       setErrorLectura(causa instanceof Error ? causa.message : String(causa));
     }
@@ -221,6 +234,10 @@ export function FirmaMultisig({
   };
 
   const fondosSuficientes = estado && settlement ? estado.balance >= settlement.gross : false;
+  // El splitter rechaza un periodo que no sea mayor al ultimo liquidado. Firmar o
+  // ejecutar uno ya usado no puede funcionar: el Safe revierte con un GS013 opaco.
+  const periodoLiquidable =
+    estado?.ultimoPeriodo != null && settlement ? isEpochSettleable(settlement.epochId, estado.ultimoPeriodo) : true;
   const hashesCoinciden =
     !estado?.hashSegunContrato || !hashCalculado
       ? null
@@ -282,6 +299,14 @@ export function FirmaMultisig({
         </div>
       )}
 
+      {estado && settlement && !periodoLiquidable && estado.ultimoPeriodo !== null && (
+        <div className="aviso error">
+          Period #{settlement.epochId} cannot be settled: the pool already settled up to period #
+          {estado.ultimoPeriodo.toString()}, and the contract only accepts a higher one. Set the period to at
+          least {(estado.ultimoPeriodo + 1n).toString()} in the telemetry card.
+        </div>
+      )}
+
       {estado && settlement && !fondosSuficientes && (
         <div className="aviso alerta">
           The vault holds {formatUnidades(estado.balance)} {cadena.moneda} and the payout needs{" "}
@@ -300,11 +325,11 @@ export function FirmaMultisig({
 
       {cuenta && (
         <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-          <button onClick={() => void firmar()} disabled={ocupado || !esDueno || !hashesCoinciden}>
+          <button onClick={() => void firmar()} disabled={ocupado || !esDueno || !hashesCoinciden || !periodoLiquidable}>
             Sign with this wallet
           </button>
           {estado && firmas.length >= estado.threshold && (
-            <button className="primario" onClick={() => void ejecutar()} disabled={ocupado || !fondosSuficientes}>
+            <button className="primario" onClick={() => void ejecutar()} disabled={ocupado || !fondosSuficientes || !periodoLiquidable}>
               Execute settlement
             </button>
           )}

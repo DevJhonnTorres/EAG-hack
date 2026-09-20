@@ -106,6 +106,18 @@ describe("mensajeDeWallet", () => {
     expect(mensaje).not.toMatch(/coalesce/);
   });
 
+  /** Lo que devuelve un Safe cuando la llamada interna revierte, p. ej. un periodo ya usado. */
+  it("explica el GS013 del Safe en vez de mostrar el codigo opaco", () => {
+    const error = new Error('execution reverted: "GS013" (action="estimateGas", data="0x08c379a0...")');
+    const mensaje = mensajeDeWallet(error);
+    expect(mensaje).toMatch(/period is higher than the last settled one/);
+    expect(mensaje).toMatch(/GS013/);
+  });
+
+  it("no confunde otros codigos del Safe con GS013", () => {
+    expect(mensajeDeWallet(new Error('execution reverted: "GS026"'))).toBe('execution reverted: "GS026"');
+  });
+
   it("avisa cuando la persona rechazo la solicitud", () => {
     expect(mensajeDeWallet(errorDeEthers(RECHAZADA_POR_LA_PERSONA))).toMatch(/You rejected/);
   });
