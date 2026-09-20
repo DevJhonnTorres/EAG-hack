@@ -19,14 +19,14 @@ export const SEGUNDOS_POR_PERIODO = DIAS_POR_PERIODO * SEGUNDOS_POR_DIA;
 export const RIGS_INICIALES: RigSpec[] = [
   {
     id: "rig-a",
-    partner: "0x1111111111111111111111111111111111111111",
+    partner: "0x92302923eBE05EC3984A49755346Cf02327e7CA5",
     gpus: [GPU_CATALOG[0], GPU_CATALOG[0]],
     baseloadWatts: 80,
     psuEfficiencyBps: 9_000,
   },
   {
     id: "rig-b",
-    partner: "0x2222222222222222222222222222222222222222",
+    partner: "0x937B8Ead58E73d1A22022d9731536589793207a6",
     gpus: [GPU_CATALOG[0]],
     baseloadWatts: 80,
     psuEfficiencyBps: 9_000,
@@ -40,8 +40,9 @@ export const CONFIG_INICIAL: PoolConfig = {
   // pool chico, y la que hace visible el compromiso que el reparto tiene que resolver.
   tariffWeiPerKwh: 1_500_000_000_000_000n,
   maintenanceBps: 500,
-  energyWallet: "0x3333333333333333333333333333333333333333",
-  maintenanceVault: "0x4444444444444444444444444444444444444444",
+  energyWallet: "0xcd23dAd3cDb7eb7046829f033c92107fC60F316b",
+  // Se completa con la direccion del segundo Safe una vez desplegado el pool.
+  maintenanceVault: "0x0000000000000000000000000000000000000000",
 };
 
 /** Bruto inicial simulado: 1 HSK minado en la semana. */
