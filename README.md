@@ -2,6 +2,8 @@
 
 **Micro-pools de infraestructura: reparto de ganancias de minería auditable, verificado on-chain.**
 
+🔗 **[Demo en vivo](https://hashpool-jhonns-projects-665cb796.vercel.app)** · [Contratos en Blockscout](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7)
+
 Dos personas ponen hardware para minar juntas. A fin de mes alguien arma un Excel,
 y empieza la discusión: quién gastó más luz, cuánto aportó cada uno, qué pasa si el
 equipo de uno estuvo apagado dos días. HashPool convierte esa conversación en
@@ -154,6 +156,28 @@ Cualquiera puede recalcularlas y verificar que el baúl es el que dice ser.
 | **Total** | **2.215.147** |
 
 A ~2 gwei son unos **0,0065 HSK** incluyendo el margen del script.
+
+## Desplegado en HSKChain Testnet
+
+Contratos verificados en Blockscout — el código es auditable por cualquiera.
+
+| Componente | Dirección |
+|---|---|
+| **Baúl de tesorería** (Safe 2-de-2) | [`0x4C9F30792C7f0e93d73334Db13a94565153A0709`](https://testnet-explorer.hskchain.net/address/0x4C9F30792C7f0e93d73334Db13a94565153A0709) |
+| **Vault de mantenimiento** (Safe 2-de-2) | [`0x8cFA796c87e83963052263A06329F1Ef52DE5653`](https://testnet-explorer.hskchain.net/address/0x8cFA796c87e83963052263A06329F1Ef52DE5653) |
+| **PoolRegistry** ✓ verificado | [`0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f`](https://testnet-explorer.hskchain.net/address/0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f) |
+| **PoolSplitter** ✓ verificado | [`0x333FAd08F22752896C55C052352AcE6C6Ab620B7`](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7) |
+
+Destinatarios del reparto:
+
+| Rol | Dirección |
+|---|---|
+| Wallet de la luz | `0xcd23dAd3cDb7eb7046829f033c92107fC60F316b` |
+| Socio A | `0x92302923eBE05EC3984A49755346Cf02327e7CA5` |
+| Socio B | `0x937B8Ead58E73d1A22022d9731536589793207a6` |
+
+Los dos socios son los dueños del baúl, con umbral de **2 firmas**: ninguno puede
+mover los fondos por su cuenta.
 
 ## Cadenas
 
