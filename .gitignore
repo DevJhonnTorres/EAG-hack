@@ -24,3 +24,6 @@ orchestrator/dist/
 # Sistema
 .DS_Store
 *.log
+
+# Playwright (se instala puntualmente para verificar la interfaz)
+.shot*.mjs

@@ -8,7 +8,7 @@
     "web"
   ],
   "scripts": {
-    "build": "npm run build --workspace orchestrator",
+    "build": "npm run build --workspace @hashpool/orchestrator && npm run build --workspace web",
     "test": "npm run test:sol && npm run test:ts",
     "test:sol": "forge test --root contracts -vv",
     "test:ts": "npm run test --workspace orchestrator",
