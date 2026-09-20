@@ -35,24 +35,28 @@ export const RIGS_INICIALES: RigSpec[] = [
 
 export const CONFIG_INICIAL: PoolConfig = {
   rigs: RIGS_INICIALES,
-  // 0.00015 HSK por kWh.
+  // 0.00003 HSK por kWh.
   //
   // Calibrado contra el saldo real del baul, no contra un numero redondo: el
   // equipo del pool consume unos 153 kWh por semana, asi que la luz sale ~23%
-  // de un bruto de 0.1 HSK. Con una tarifa pensada para un bruto diez veces
-  // mayor, la factura se comeria todo y los socios cobrarian cero: seria un
+  // de un bruto de 0.02 HSK. Con una tarifa pensada para un bruto mayor, la
+  // factura se comeria el periodo entero y los socios cobrarian cero: seria un
   // reparto correcto (un periodo en perdida) pero una demostracion enganosa.
-  tariffWeiPerKwh: 150_000_000_000_000n,
+  //
+  // Es un valor de demostracion y se edita desde la pantalla. Si cambia el
+  // saldo del baul, conviene ajustarlo para que el reparto siga siendo legible.
+  tariffWeiPerKwh: 30_000_000_000_000n,
   maintenanceBps: 500,
   energyWallet: "0xcd23dAd3cDb7eb7046829f033c92107fC60F316b",
-  maintenanceVault: "0x8cFA796c87e83963052263A06329F1Ef52DE5653",
+  maintenanceVault: "0x854404820b29eACF86697550ECade5de93F28501",
 };
 
 /**
- * Bruto inicial simulado: 0.1 HSK, que es lo que el baul tiene en la cadena.
- * Asi el reparto que se previsualiza es uno que el baul puede pagar de verdad.
+ * Bruto inicial simulado: 0.02 HSK, por debajo de lo que el baul tiene en la
+ * cadena. Asi el reparto que se previsualiza es uno que el baul puede pagar de
+ * verdad, y el boton de ejecutar no aparece deshabilitado por falta de fondos.
  */
-export const BRUTO_INICIAL = 10n ** 17n;
+export const BRUTO_INICIAL = 2n * 10n ** 16n;
 
 export const CADENAS = {
   133: {
@@ -82,12 +86,19 @@ export type ChainId = keyof typeof CADENAS;
  * Desplegados con `forge script script/DeployPool.s.sol:DeployPool`.
  */
 export const CONTRATOS = {
-  /** Gnosis Safe 2-de-2 que custodia las ganancias. */
-  baul: "0x4C9F30792C7f0e93d73334Db13a94565153A0709",
-  /** Segundo Safe, con los mismos duenos, que acumula el fondo de mantenimiento. */
-  vaultMantenimiento: "0x8cFA796c87e83963052263A06329F1Ef52DE5653",
-  registry: "0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f",
-  splitter: "0x333FAd08F22752896C55C052352AcE6C6Ab620B7",
+  /**
+   * Gnosis Safe que custodia las ganancias, con umbral de una firma.
+   *
+   * El protocolo soporta cualquier umbral; este pool se configuro a 1 de 1 para
+   * que la demostracion pueda ejecutarse desde una sola wallet. Un pool real
+   * entre socios usaria 2 de 2, que es lo que impide que uno mueva los fondos
+   * por su cuenta, y el codigo es exactamente el mismo.
+   */
+  baul: "0xb6b534Fe7c8B5ef35b4FB33Ca95288df16823fde",
+  /** Segundo Safe, con el mismo dueno, que acumula el fondo de mantenimiento. */
+  vaultMantenimiento: "0x854404820b29eACF86697550ECade5de93F28501",
+  registry: "0x2BC8E7B9Db2d46479C35a31112BbD6b8e535B390",
+  splitter: "0xB8c0C32385577620fFecfd59DD6Dd2863226F1F1",
   /** Token ERC-3009 con el que el agente paga sus insumos de datos via x402. */
   credito: "0x891a0838Af855147b5E911576E2224c8a23280e4",
 } as const;

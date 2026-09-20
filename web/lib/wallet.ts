@@ -68,6 +68,30 @@ export async function conectar(cadena: DatosCadena): Promise<{ provider: Browser
  * porque el chainId es parte del dominio EIP-712. Sin este paso, el error
  * aparecerian recien al ejecutar, sin ninguna pista de la causa.
  */
+/**
+ * Extrae el codigo de error JSON-RPC de la wallet.
+ *
+ * ethers envuelve los errores del provider, asi que el codigo original queda
+ * anidado y no en la raiz. Leer solo `causa.code` devuelve "UNKNOWN_ERROR" y
+ * hace perder el 4902, que es justamente el caso que hay que tratar.
+ */
+function codigoRpc(causa: unknown): number | undefined {
+  const candidatos = [
+    causa,
+    (causa as { error?: unknown } | null)?.error,
+    (causa as { info?: { error?: unknown } } | null)?.info?.error,
+    (causa as { data?: { originalError?: unknown } } | null)?.data?.originalError,
+  ];
+  for (const candidato of candidatos) {
+    const codigo = (candidato as { code?: unknown } | null)?.code;
+    if (typeof codigo === "number") return codigo;
+  }
+  return undefined;
+}
+
+/** 4001: la persona rechazo la solicitud en la wallet. */
+const RECHAZADA_POR_LA_PERSONA = 4001;
+
 export async function asegurarCadena(provider: BrowserProvider, cadena: DatosCadena): Promise<void> {
   const red = await provider.getNetwork();
   if (Number(red.chainId) === cadena.chainId) return;
@@ -76,10 +100,13 @@ export async function asegurarCadena(provider: BrowserProvider, cadena: DatosCad
   try {
     await provider.send("wallet_switchEthereumChain", [{ chainId: chainIdHex }]);
   } catch (causa) {
-    // 4902: la wallet no conoce esta cadena todavia.
-    const codigo = (causa as { code?: number } | null)?.code;
-    if (codigo !== 4902) throw causa;
+    // Si la persona dijo que no, se respeta y no se le insiste con otro dialogo.
+    if (codigoRpc(causa) === RECHAZADA_POR_LA_PERSONA) throw causa;
 
+    // Para cualquier otro fallo se intenta agregar la cadena. El caso tipico es
+    // 4902 ("cadena desconocida"), pero no se condiciona a ese codigo: distintas
+    // wallets lo reportan de formas distintas, y agregar una cadena que la wallet
+    // ya conoce no hace dano.
     await provider.send("wallet_addEthereumChain", [
       {
         chainId: chainIdHex,
