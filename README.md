@@ -106,11 +106,54 @@ Sin esa variable, las suites de fork se omiten solas.
 
 ### Despliegue
 
+El pool completo se crea con un comando. `DeployPool` despliega, en orden: el baúl
+de tesorería, el vault del fondo de mantenimiento, el registro y el splitter.
+
 ```bash
+cp .env.example .env        # ya trae las direcciones del pool
 npm run foundry
-forge script script/Deploy.s.sol:Deploy --root contracts \
-  --rpc-url hsk_testnet --broadcast --verify --verifier blockscout
+
+cd contracts
+forge script script/DeployPool.s.sol:DeployPool \
+  --rpc-url "$HSK_TESTNET_RPC" \
+  --broadcast --verify --verifier blockscout \
+  --interactive               # pide la clave sin dejarla en el historial
 ```
+
+Usá `--interactive` (o `--ledger`, o `--account` con una keystore cifrada) en vez de
+`--private-key`: así la clave no queda en el historial del shell ni en un archivo.
+
+**Simular antes de gastar**, contra el estado real de la cadena:
+
+```bash
+forge script script/DeployPool.s.sol:DeployPool \
+  --rpc-url "$HSK_TESTNET_RPC" --sender <tu-wallet>
+```
+
+#### Direcciones previsibles de antemano
+
+La factory de Safe usa CREATE2, así que la dirección del baúl depende solo de sus
+dueños, el umbral y el salt — **no de quién ejecuta el despliegue**. Con los dueños y
+el salt de `.env.example`:
+
+| Contrato | Dirección |
+|---|---|
+| Baúl de tesorería | `0x4C9F30792C7f0e93d73334Db13a94565153A0709` |
+| Vault de mantenimiento | `0x8cFA796c87e83963052263A06329F1Ef52DE5653` |
+
+Cualquiera puede recalcularlas y verificar que el baúl es el que dice ser.
+
+#### Costo
+
+| Concepto | Gas |
+|---|---|
+| Baúl de tesorería | 240.927 |
+| Vault de mantenimiento | 235.875 |
+| `PoolRegistry` | 884.119 |
+| `PoolSplitter` | 854.226 |
+| **Total** | **2.215.147** |
+
+A ~2 gwei son unos **0,0065 HSK** incluyendo el margen del script.
 
 ## Cadenas
 
