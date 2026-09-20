@@ -41,12 +41,21 @@ contract DeployPoolForkTest is Test {
         owners[0] = PARTNER_A;
         owners[1] = PARTNER_B;
 
-        baul = SafeDeployer.deploy(owners, 2, 0);
+        // Salt derivado del bloque del fork, no fijo.
+        //
+        // La factory de Safe usa CREATE2: con los mismos duenos y el mismo salt sale siempre
+        // la misma direccion. El baul real del pool ya esta desplegado con estos duenos y
+        // salt 0, asi que reusar ese salt hace que CREATE2 revierta por colision. Un salt
+        // que depende del bloque mantiene el ensayo independiente de lo que ya exista en la
+        // cadena, hoy y despues de cada nuevo despliegue.
+        uint256 salt = uint256(keccak256(abi.encodePacked(block.number, "ensayo-baul")));
+
+        baul = SafeDeployer.deploy(owners, 2, salt);
 
         address[] memory ownersVault = new address[](2);
         ownersVault[0] = PARTNER_A;
         ownersVault[1] = PARTNER_B;
-        vaultMantenimiento = SafeDeployer.deploy(ownersVault, 2, 1);
+        vaultMantenimiento = SafeDeployer.deploy(ownersVault, 2, salt + 1);
 
         address[] memory partners = new address[](2);
         partners[0] = PARTNER_A;
@@ -137,12 +146,14 @@ contract DeployPoolForkTest is Test {
         partners[0] = PARTNER_A;
         partners[1] = PARTNER_B;
 
+        uint256 salt = uint256(keccak256(abi.encodePacked(block.number, "ensayo-costo")));
+
         uint256 gasInicial = gasleft();
-        ISafe nuevoBaul = SafeDeployer.deploy(owners, 2, 1_000);
+        ISafe nuevoBaul = SafeDeployer.deploy(owners, 2, salt);
         uint256 gasBaul = gasInicial - gasleft();
 
         gasInicial = gasleft();
-        ISafe nuevoVault = SafeDeployer.deploy(owners, 2, 1_001);
+        ISafe nuevoVault = SafeDeployer.deploy(owners, 2, salt + 1);
         uint256 gasVault = gasInicial - gasleft();
 
         gasInicial = gasleft();
