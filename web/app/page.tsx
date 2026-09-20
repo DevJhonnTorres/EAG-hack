@@ -23,6 +23,7 @@ import {
 import { acortarDireccion, formatUnidades, formatearDuracion, parseUnidades, porcentaje } from "@/lib/format";
 import { buildSafeTransaction } from "@/lib/calldata";
 import { Historial } from "@/components/Historial";
+import { FirmaMultisig } from "@/components/FirmaMultisig";
 
 const builder = new SettlementBuilder();
 const CADENA = CADENAS[133];
@@ -187,6 +188,13 @@ export default function Page() {
             telemetryHash={telemetryHash}
             splitterAddress={splitterAddress}
             setSplitterAddress={setSplitterAddress}
+          />
+          <FirmaMultisig
+            cadena={{ chainId: 133, nombre: CADENA.nombre, moneda: CADENA.moneda, rpc: CADENA.rpc, explorer: CADENA.explorer }}
+            safeAddress={CONTRATOS.baul}
+            splitterAddress={splitterAddress}
+            settlement={resultado.settlement}
+            telemetryHash={telemetryHash}
           />
           <Historial
             explorerUrl={CADENA.explorer}

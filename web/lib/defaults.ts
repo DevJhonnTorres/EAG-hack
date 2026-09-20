@@ -35,17 +35,24 @@ export const RIGS_INICIALES: RigSpec[] = [
 
 export const CONFIG_INICIAL: PoolConfig = {
   rigs: RIGS_INICIALES,
-  // 0.0015 HSK por kWh. Calibrado para que, con el hardware y el bruto iniciales,
-  // la luz represente alrededor del 20% del periodo: la proporcion realista de un
-  // pool chico, y la que hace visible el compromiso que el reparto tiene que resolver.
-  tariffWeiPerKwh: 1_500_000_000_000_000n,
+  // 0.00015 HSK por kWh.
+  //
+  // Calibrado contra el saldo real del baul, no contra un numero redondo: el
+  // equipo del pool consume unos 153 kWh por semana, asi que la luz sale ~23%
+  // de un bruto de 0.1 HSK. Con una tarifa pensada para un bruto diez veces
+  // mayor, la factura se comeria todo y los socios cobrarian cero: seria un
+  // reparto correcto (un periodo en perdida) pero una demostracion enganosa.
+  tariffWeiPerKwh: 150_000_000_000_000n,
   maintenanceBps: 500,
   energyWallet: "0xcd23dAd3cDb7eb7046829f033c92107fC60F316b",
   maintenanceVault: "0x8cFA796c87e83963052263A06329F1Ef52DE5653",
 };
 
-/** Bruto inicial simulado: 1 HSK minado en la semana. */
-export const BRUTO_INICIAL = 10n ** 18n;
+/**
+ * Bruto inicial simulado: 0.1 HSK, que es lo que el baul tiene en la cadena.
+ * Asi el reparto que se previsualiza es uno que el baul puede pagar de verdad.
+ */
+export const BRUTO_INICIAL = 10n ** 17n;
 
 export const CADENAS = {
   133: {
