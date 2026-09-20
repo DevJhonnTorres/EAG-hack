@@ -58,7 +58,7 @@ const nombreDeRed = (red: string) => (red === "ERC20" ? "Ethereum (ERC20)" : red
  * exchange changes a pair or a network, this card follows.
  *
  * Testnet payouts are only cents, far below the exchange's minimum withdrawal, so by
- * default the card previews a simulated mainnet-scale payout and can "run" the swap
+ * default the card previews a demo mainnet-scale payout and can "run" the swap
  * step by step. That part is a mock: real orders are placed with `npm run hashkey` from a
  * local machine, because this page is public and must never hold a key.
  */
@@ -331,14 +331,14 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
             style={{ width: "auto" }}
           />
           <span>
-            <strong>Simulated mainnet-scale amounts.</strong> Testnet payouts are only cents, far below
+            <strong>Demo mainnet-scale amounts.</strong> Testnet payouts are only cents, far below
             HashKey&apos;s minimum withdrawal, so this previews the partners&apos; real split scaled to a larger total.
             Prices, fees and the route stay live; nothing is sent.
           </span>
         </label>
         {simulado && (
           <div style={{ marginTop: 10 }}>
-            <label htmlFor="bridge-total-simulado">Simulated total payout to the partners ({activo})</label>
+            <label htmlFor="bridge-total-simulado">Demo total payout to the partners ({activo})</label>
             <input
               id="bridge-total-simulado"
               className="mono"
@@ -364,7 +364,7 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
       {todasInviables && !simulado && origen === "real" && (
         <div className="aviso alerta">
           With the exchange&apos;s real costs, none of this payout can be converted to USDC: these are testnet
-          amounts, far below the minimum withdrawal. Turn on the simulated amounts above to preview a mainnet-scale
+          amounts, far below the minimum withdrawal. Turn on the demo amounts above to preview a mainnet-scale
           conversion.
         </div>
       )}
@@ -475,7 +475,7 @@ function SwapSimulado({
   const totalEntra = viables.reduce((acc, cotizacion) => acc + cotizacion.amountIn, 0n);
   const fills = useMemo(() => {
     try {
-      // The simulation chains steps in 18-decimal fixed point, whatever the asset.
+      // The walk through the route chains steps in 18-decimal fixed point, whatever the asset.
       return simularRuta(pasos, precios, totalEntra * 10n ** BigInt(18 - decimalesActivo));
     } catch {
       return null;
@@ -506,10 +506,10 @@ function SwapSimulado({
     <div style={{ marginTop: 18 }}>
       <div className="equipo-encabezado" style={{ marginBottom: 8 }}>
         <strong>Swap to USDC</strong>
-        <span className="chip">simulated</span>
+        <span className="chip">demo</span>
         {avance === null ? (
           <button className="primario" onClick={() => setAvance(0)}>
-            Run simulated swap
+            Run demo swap
           </button>
         ) : (
           <button onClick={() => setAvance(0)} disabled={!terminado}>
@@ -579,7 +579,7 @@ function SwapSimulado({
           </table>
 
           <div className="aviso alerta" style={{ marginTop: 12, marginBottom: 0 }}>
-            SIMULATED: no order was sent and no funds moved. Real orders are placed with{" "}
+            DEMO: no order was sent and no funds moved. Real orders are placed with{" "}
             <code>npm run hashkey</code>, and the USDC still has to be bridged from Ethereum to Linea.
           </div>
         </>

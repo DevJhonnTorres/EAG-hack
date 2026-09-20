@@ -72,7 +72,7 @@ function tarifa() {
     currency: CADENA.moneda,
     network: RED,
     asOf: new Date().toISOString(),
-    source: "simulated",
+    source: "demo",
   };
 }
 

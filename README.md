@@ -124,7 +124,7 @@ forge script script/DeployPool.s.sol:DeployPool \
 Use `--interactive` (or `--ledger`, or `--account` with an encrypted keystore) instead
 of `--private-key`: that way the key does not end up in the shell history or in a file.
 
-**Simulate before spending**, against the real state of the chain:
+**Dry-run before spending**, against the real state of the chain:
 
 ```bash
 forge script script/DeployPool.s.sol:DeployPool \
@@ -255,17 +255,17 @@ The logic lives in `orchestrator/src/domain/bridge.ts` and
 downwards and the quote conserves value
 (`gross = sell fee + withdrawal fee + net`).
 
-#### Demo mode: simulated amounts and a mocked swap
+#### Demo mode: scaled amounts and a mocked swap
 
 Testnet payouts are only cents, and HashKey requires withdrawing at least 25 USDC, so
 with the exchange's real costs no testnet payout can be converted. To make the flow
-visible anyway, the card has two **simulated** pieces, both clearly labelled:
+visible anyway, the card has two **demo** pieces, both clearly labelled:
 
-- **Simulated mainnet-scale amounts** (on by default): the partners' real split is
+- **Demo mainnet-scale amounts** (on by default): the partners' real split is
   scaled to a larger total (editable), keeping every partner's proportion exactly.
   Prices, fees and the route stay live. Turning it off shows the honest result with the
   real testnet amounts.
-- **Run simulated swap**: walks the route step by step with the live prices and ends with
+- **Run demo swap**: walks the route step by step with the live prices and ends with
   what each partner would receive on Linea. It sends no order and moves no funds.
 
 ### Trade (local script, with your key)
@@ -323,7 +323,7 @@ deployer and Multicall3.
 
 ## Scope of the demonstration
 
-The hardware and telemetry data are **simulated** and editable from the interface. The
+The hardware and telemetry data are **demo data** and editable from the interface. The
 payout calculation, the audit hash, the multisig signature and the contracts are **real**
 and verified against the chain. In the bridge card, prices, fees, the route and the
-bridge cost are real and live; the payout amounts and the swap run are simulated.
+bridge cost are real and live; the payout amounts and the swap run are mocked.
