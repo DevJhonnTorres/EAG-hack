@@ -13,7 +13,8 @@ import {
   type Settlement,
 } from "@hashpool/orchestrator";
 import { SAFE_ABI } from "@/lib/safeAbi";
-import { conectar, haySoporteDeWallet, lectorDeCadena, type DatosCadena } from "@/lib/wallet";
+import { asegurarCadena, conectar, haySoporteDeWallet, type DatosCadena } from "@/lib/wallet";
+import { lectorDeCadena } from "@/lib/lector";
 import { encodeSettle } from "@/lib/calldata";
 import { acortarDireccion, formatUnidades } from "@/lib/format";
 
@@ -370,6 +371,29 @@ export function FirmaMultisig({
       {error && (
         <div className="aviso error" style={{ marginTop: 14, marginBottom: 0 }}>
           {error}
+          {/*
+            Si la wallet se resiste a cambiar de red, hay una salida manual: se
+            puede reintentar el cambio, o agregar la cadena a mano con estos datos.
+            Quedarse sin recurso frente a una wallet testaruda no es una opcion.
+          */}
+          {error.includes("cadena") && (
+            <div style={{ marginTop: 10 }}>
+              <button onClick={() => void asegurarCadena(cadena).then(() => setError(null), (c) => setError(String(c)))}>
+                Reintentar el cambio a {cadena.nombre}
+              </button>
+              <div className="codigo" style={{ marginTop: 10, maxHeight: 120 }}>
+                Red: {cadena.nombre}
+                <br />
+                RPC: {cadena.rpc}
+                <br />
+                Chain ID: {cadena.chainId}
+                <br />
+                Moneda: {cadena.moneda}
+                <br />
+                Explorer: {cadena.explorer}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {txHash && (

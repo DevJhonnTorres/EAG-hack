@@ -1,4 +1,7 @@
-import { BrowserProvider, JsonRpcProvider, type Eip1193Provider } from "ethers";
+import { BrowserProvider, type Eip1193Provider } from "ethers";
+import { asegurarCadena as asegurarCadenaEnProveedor, type DatosCadena } from "@hashpool/orchestrator";
+
+export { CadenaIncorrectaError, type DatosCadena } from "@hashpool/orchestrator";
 
 /**
  * Conexion con la wallet del navegador.
@@ -6,6 +9,10 @@ import { BrowserProvider, JsonRpcProvider, type Eip1193Provider } from "ethers";
  * Se habla EIP-1193 directamente, sin libreria de conexion. Para un pool de dos
  * socios que firman desde MetaMask no hace falta mas, y evita arrastrar un
  * arbol de dependencias que habria que auditar en el camino del dinero.
+ *
+ * La logica de llevar la wallet a la cadena correcta vive en el paquete del
+ * motor, donde esta cubierta por tests con wallets simuladas: es el punto que
+ * ya produjo dos fallos que no se veian sin una wallet real delante.
  */
 
 declare global {
@@ -24,102 +31,28 @@ export class SinWalletError extends Error {
   }
 }
 
-export class CadenaIncorrectaError extends Error {
-  constructor(actual: number, esperada: number) {
-    super(`la wallet esta en la cadena ${actual} y el pool vive en la ${esperada}`);
-    this.name = "CadenaIncorrectaError";
-  }
-}
-
-export interface DatosCadena {
-  readonly chainId: number;
-  readonly nombre: string;
-  readonly moneda: string;
-  readonly rpc: string;
-  readonly explorer: string;
-}
-
-/** Provider de solo lectura: sirve para leer la cadena sin pedirle permiso a nadie. */
-export function lectorDeCadena(rpc: string, chainId: number): JsonRpcProvider {
-  // Fijar la red evita una llamada extra de deteccion en cada arranque.
-  return new JsonRpcProvider(rpc, chainId, { staticNetwork: true });
-}
-
 export function haySoporteDeWallet(): boolean {
   return typeof window !== "undefined" && window.ethereum !== undefined;
 }
 
-export async function conectar(cadena: DatosCadena): Promise<{ provider: BrowserProvider; cuenta: string }> {
+function nuevoProvider(): BrowserProvider {
   if (!haySoporteDeWallet()) throw new SinWalletError();
+  return new BrowserProvider(window.ethereum!, "any");
+}
 
-  const provider = new BrowserProvider(window.ethereum!, "any");
+export async function asegurarCadena(cadena: DatosCadena): Promise<void> {
+  await asegurarCadenaEnProveedor(nuevoProvider(), cadena);
+}
+
+export async function conectar(cadena: DatosCadena): Promise<{ provider: BrowserProvider; cuenta: string }> {
+  const provider = nuevoProvider();
   const cuentas = (await provider.send("eth_requestAccounts", [])) as string[];
   const cuenta = cuentas[0];
   if (!cuenta) throw new Error("la wallet no devolvio ninguna cuenta");
 
-  await asegurarCadena(provider, cadena);
-  return { provider, cuenta };
-}
+  await asegurarCadenaEnProveedor(provider, cadena);
 
-/**
- * Lleva la wallet a la cadena del pool, agregandola si no la conoce.
- *
- * Firmar en la cadena equivocada produce una firma valida que el Safe rechaza,
- * porque el chainId es parte del dominio EIP-712. Sin este paso, el error
- * aparecerian recien al ejecutar, sin ninguna pista de la causa.
- */
-/**
- * Extrae el codigo de error JSON-RPC de la wallet.
- *
- * ethers envuelve los errores del provider, asi que el codigo original queda
- * anidado y no en la raiz. Leer solo `causa.code` devuelve "UNKNOWN_ERROR" y
- * hace perder el 4902, que es justamente el caso que hay que tratar.
- */
-function codigoRpc(causa: unknown): number | undefined {
-  const candidatos = [
-    causa,
-    (causa as { error?: unknown } | null)?.error,
-    (causa as { info?: { error?: unknown } } | null)?.info?.error,
-    (causa as { data?: { originalError?: unknown } } | null)?.data?.originalError,
-  ];
-  for (const candidato of candidatos) {
-    const codigo = (candidato as { code?: unknown } | null)?.code;
-    if (typeof codigo === "number") return codigo;
-  }
-  return undefined;
-}
-
-/** 4001: la persona rechazo la solicitud en la wallet. */
-const RECHAZADA_POR_LA_PERSONA = 4001;
-
-export async function asegurarCadena(provider: BrowserProvider, cadena: DatosCadena): Promise<void> {
-  const red = await provider.getNetwork();
-  if (Number(red.chainId) === cadena.chainId) return;
-
-  const chainIdHex = `0x${cadena.chainId.toString(16)}`;
-  try {
-    await provider.send("wallet_switchEthereumChain", [{ chainId: chainIdHex }]);
-  } catch (causa) {
-    // Si la persona dijo que no, se respeta y no se le insiste con otro dialogo.
-    if (codigoRpc(causa) === RECHAZADA_POR_LA_PERSONA) throw causa;
-
-    // Para cualquier otro fallo se intenta agregar la cadena. El caso tipico es
-    // 4902 ("cadena desconocida"), pero no se condiciona a ese codigo: distintas
-    // wallets lo reportan de formas distintas, y agregar una cadena que la wallet
-    // ya conoce no hace dano.
-    await provider.send("wallet_addEthereumChain", [
-      {
-        chainId: chainIdHex,
-        chainName: cadena.nombre,
-        nativeCurrency: { name: cadena.moneda, symbol: cadena.moneda, decimals: 18 },
-        rpcUrls: [cadena.rpc],
-        blockExplorerUrls: [cadena.explorer],
-      },
-    ]);
-  }
-
-  const despues = await provider.getNetwork();
-  if (Number(despues.chainId) !== cadena.chainId) {
-    throw new CadenaIncorrectaError(Number(despues.chainId), cadena.chainId);
-  }
+  // Se devuelve un provider nuevo: el anterior nacio apuntando a la red vieja y
+  // conserva ese dato cacheado, que despues enturbia el envio de transacciones.
+  return { provider: nuevoProvider(), cuenta };
 }
