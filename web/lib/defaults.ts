@@ -58,25 +58,38 @@ export const CONFIG_INICIAL: PoolConfig = {
  */
 export const BRUTO_INICIAL = 2n * 10n ** 16n;
 
+/** Campos editables del bridge de un activo. Son texto: se convierten a enteros al calcular. */
+export interface CamposBridge {
+  /** USDC por 1 unidad del activo. */
+  precio: string;
+  /** Comision de retiro de USDC del exchange. */
+  comisionRetiro: string;
+  /** Retiro minimo de USDC del exchange. */
+  retiroMinimo: string;
+  /** Costo de pasar el USDC de Ethereum a Linea. Depende del bridge que se use: no se consulta. */
+  costoBridge: string;
+}
+
 /**
- * Parametros de demostracion del bridge a USDC en Linea.
+ * Valores de demostracion del bridge, para cuando no hay datos reales.
  *
- * Son valores de ejemplo, no cotizaciones: ningun exchange se consulta. Se dejan
- * como texto porque se editan desde la pantalla y se convierten a enteros recien
- * al calcular. La comision de retiro es chica a proposito: el reparto de la demo
- * es de centavos, y con la comision real de un retiro (del orden de 1 USDC) el
- * bridge saldria inviable y la demostracion no mostraria nada.
+ * No son cotizaciones. El reparto de la demo es de centavos, asi que los costos
+ * de retiro son simbolicos: con los reales (retiro minimo de 25 USDC) ninguna
+ * linea de la demo seria viable, y la tarjeta no mostraria nada. Con datos de
+ * HashKey Exchange, la tarjeta usa los costos reales y lo dice.
  */
-export const BRIDGE_INICIAL: Record<
-  BridgeAsset,
-  { precio: string; comisionRetiro: string; retiroMinimo: string }
-> = {
-  ETC: { precio: "20", comisionRetiro: "0.01", retiroMinimo: "0.05" },
-  BTC: { precio: "100000", comisionRetiro: "0.01", retiroMinimo: "0.05" },
+export const BRIDGE_INICIAL: Record<BridgeAsset, CamposBridge> = {
+  HSK: { precio: "0.098", comisionRetiro: "0.0001", retiroMinimo: "0.0001", costoBridge: "0" },
+  BTC: { precio: "80000", comisionRetiro: "0.0001", retiroMinimo: "0.0001", costoBridge: "0" },
 };
 
-/** Comision de venta en el exchange: 0,20%. */
-export const COMISION_VENTA_BPS_INICIAL = 20;
+/**
+ * Comision de venta total de la ruta, en basis points (0,40%).
+ *
+ * Es un supuesto: la tarifa real depende del nivel de la cuenta y de cuantos
+ * pares recorre la ruta (dos para BTC, tres para HSK). Se ajusta a la tarifa propia.
+ */
+export const COMISION_VENTA_BPS_INICIAL = 40;
 
 export const CADENAS = {
   133: {

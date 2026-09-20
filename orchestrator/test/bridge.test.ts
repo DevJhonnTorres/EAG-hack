@@ -11,7 +11,7 @@ import { NegativeAmountError } from "../src/domain/money.js";
 import type { SettlementPayout } from "../src/domain/types.js";
 import { PARTNER_A, PARTNER_B } from "./fixtures.js";
 
-const ETC = 10n ** 18n;
+const HSK = 10n ** 18n;
 const BTC = 10n ** 8n;
 const USDC = 10n ** 6n;
 
@@ -20,7 +20,7 @@ const precio = (usdc: bigint): bigint => usdc * 10n ** 18n;
 
 function terms(overrides: Partial<BridgeTerms> = {}): BridgeTerms {
   return {
-    asset: "ETC",
+    asset: "HSK",
     rateE18: precio(20n),
     tradeFeeBps: 0,
     withdrawalFee: 0n,
@@ -30,9 +30,9 @@ function terms(overrides: Partial<BridgeTerms> = {}): BridgeTerms {
 }
 
 describe("quoteBridge", () => {
-  it("convierte ETC a USDC al precio dado", () => {
-    // 1 ETC a 20 USDC.
-    const quote = quoteBridge(PARTNER_A, 1n * ETC, terms());
+  it("convierte HSK a USDC al precio dado", () => {
+    // 1 HSK a 20 USDC.
+    const quote = quoteBridge(PARTNER_A, 1n * HSK, terms());
     expect(quote.grossOut).toBe(20n * USDC);
     expect(quote.netOut).toBe(20n * USDC);
     expect(quote.rejection).toBeNull();
@@ -50,7 +50,7 @@ describe("quoteBridge", () => {
     // 1000 USDC brutos, 0,1% de venta = 1 USDC, retiro fijo de 2 USDC.
     const quote = quoteBridge(
       PARTNER_A,
-      50n * ETC,
+      50n * HSK,
       terms({ tradeFeeBps: 10, withdrawalFee: 2n * USDC }),
     );
     expect(quote.grossOut).toBe(1_000n * USDC);
@@ -60,7 +60,7 @@ describe("quoteBridge", () => {
   });
 
   it("redondea hacia abajo: nunca promete mas de lo que entrega el exchange", () => {
-    // 1 wei de ETC a 20 USDC es una fraccion de unidad minima de USDC: no llega a nada.
+    // 1 wei de HSK a 20 USDC es una fraccion de unidad minima de USDC: no llega a nada.
     const polvo = quoteBridge(PARTNER_A, 1n, terms());
     expect(polvo.grossOut).toBe(0n);
     expect(polvo.rejection).toBe("NO_AMOUNT");
@@ -80,7 +80,7 @@ describe("quoteBridge", () => {
 
     it("las comisiones se comen todo el monto", () => {
       // 1 USDC bruto y un retiro de 1 USDC: no quedaria nada.
-      const quote = quoteBridge(PARTNER_A, ETC / 20n, terms({ withdrawalFee: 1n * USDC }));
+      const quote = quoteBridge(PARTNER_A, HSK / 20n, terms({ withdrawalFee: 1n * USDC }));
       expect(quote.grossOut).toBe(1n * USDC);
       expect(quote.rejection).toBe("FEES_EXCEED_AMOUNT");
       expect(quote.netOut).toBe(0n);
@@ -90,7 +90,7 @@ describe("quoteBridge", () => {
       // 1 USDC bruto, retiro de 0,1 USDC: quedan 0,9 y el minimo es 5.
       const quote = quoteBridge(
         PARTNER_A,
-        ETC / 20n,
+        HSK / 20n,
         terms({ withdrawalFee: USDC / 10n, minWithdrawal: 5n * USDC }),
       );
       expect(quote.rejection).toBe("BELOW_MINIMUM");
@@ -98,7 +98,7 @@ describe("quoteBridge", () => {
     });
 
     it("el retiro minimo justo es viable", () => {
-      const quote = quoteBridge(PARTNER_A, ETC / 20n, terms({ minWithdrawal: 1n * USDC }));
+      const quote = quoteBridge(PARTNER_A, HSK / 20n, terms({ minWithdrawal: 1n * USDC }));
       expect(quote.rejection).toBeNull();
       expect(quote.netOut).toBe(1n * USDC);
     });
@@ -106,20 +106,20 @@ describe("quoteBridge", () => {
 
   describe("validacion de los parametros", () => {
     it("rechaza un precio que no es positivo", () => {
-      expect(() => quoteBridge(PARTNER_A, ETC, terms({ rateE18: 0n }))).toThrow(RangeError);
-      expect(() => quoteBridge(PARTNER_A, ETC, terms({ rateE18: -1n }))).toThrow(RangeError);
+      expect(() => quoteBridge(PARTNER_A, HSK, terms({ rateE18: 0n }))).toThrow(RangeError);
+      expect(() => quoteBridge(PARTNER_A, HSK, terms({ rateE18: -1n }))).toThrow(RangeError);
     });
 
     it("rechaza comisiones en basis points fuera de rango, incluso con monto cero", () => {
-      expect(() => quoteBridge(PARTNER_A, ETC, terms({ tradeFeeBps: -1 }))).toThrow(RangeError);
-      expect(() => quoteBridge(PARTNER_A, ETC, terms({ tradeFeeBps: 10_001 }))).toThrow(RangeError);
+      expect(() => quoteBridge(PARTNER_A, HSK, terms({ tradeFeeBps: -1 }))).toThrow(RangeError);
+      expect(() => quoteBridge(PARTNER_A, HSK, terms({ tradeFeeBps: 10_001 }))).toThrow(RangeError);
       expect(() => quoteBridge(PARTNER_A, 0n, terms({ tradeFeeBps: 10_001 }))).toThrow(RangeError);
     });
 
     it("rechaza montos y comisiones negativos", () => {
       expect(() => quoteBridge(PARTNER_A, -1n, terms())).toThrow(NegativeAmountError);
-      expect(() => quoteBridge(PARTNER_A, ETC, terms({ withdrawalFee: -1n }))).toThrow(NegativeAmountError);
-      expect(() => quoteBridge(PARTNER_A, ETC, terms({ minWithdrawal: -1n }))).toThrow(NegativeAmountError);
+      expect(() => quoteBridge(PARTNER_A, HSK, terms({ withdrawalFee: -1n }))).toThrow(NegativeAmountError);
+      expect(() => quoteBridge(PARTNER_A, HSK, terms({ minWithdrawal: -1n }))).toThrow(NegativeAmountError);
     });
   });
 
@@ -131,7 +131,7 @@ describe("quoteBridge", () => {
   });
 
   describe("propiedades", () => {
-    const assetArb = fc.constantFrom<BridgeAsset>("ETC", "BTC");
+    const assetArb = fc.constantFrom<BridgeAsset>("HSK", "BTC");
     const amountArb = fc.bigInt({ min: 0n, max: 10n ** 24n });
     const termsArb = fc.record({
       asset: assetArb,
@@ -201,8 +201,8 @@ describe("quoteBridge", () => {
 });
 
 describe("poolAmountToAsset", () => {
-  it("deja igual un monto de ETC: ambos tienen 18 decimales", () => {
-    expect(poolAmountToAsset(123_456_789n, "ETC")).toBe(123_456_789n);
+  it("deja igual un monto de HSK: ambos tienen 18 decimales", () => {
+    expect(poolAmountToAsset(123_456_789n, "HSK")).toBe(123_456_789n);
   });
 
   it("baja a 8 decimales un monto de BTC, redondeando hacia abajo", () => {
@@ -226,7 +226,7 @@ describe("planBridge", () => {
   it("cotiza cada linea en el orden en que viene", () => {
     const quotes = planBridge(payouts, terms());
     expect(quotes.map((q) => q.partner)).toEqual([PARTNER_A, PARTNER_B]);
-    // 0,0096 ETC a 20 USDC = 0,192 USDC; la mitad para el segundo.
+    // 0,0096 HSK a 20 USDC = 0,192 USDC; la mitad para el segundo.
     expect(quotes.map((q) => q.netOut)).toEqual([192_000n, 96_000n]);
   });
 

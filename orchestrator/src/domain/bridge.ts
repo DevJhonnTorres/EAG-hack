@@ -2,11 +2,13 @@ import { applyBps, assertNonNegative } from "./money.js";
 import type { Address, Bps, SettlementPayout } from "./types.js";
 
 /**
- * Bridge de lo minado (ETC o BTC) a USDC en Linea.
+ * Bridge de lo minado (HSK o BTC) a USDC en Linea.
  *
  * Cada socio cobra su parte del reparto en el coin minado. Este modulo calcula
- * cuanto USDC le llega a Linea si lo pasa por el exchange: envia el activo, lo
- * vende por USDC y retira a Linea.
+ * cuanto USDC le queda si lo pasa por el exchange: envia el activo, lo vende
+ * por USDC y retira. HashKey Exchange no retira USDC directo a Linea, asi que el
+ * retiro sale por Ethereum y el ultimo tramo (Ethereum a Linea) es un bridge
+ * aparte, cuyo costo entra aca como parte de `withdrawalFee`.
  *
  * Aplica la misma regla que el resto del paquete: todo monto es `bigint`. El
  * precio se recibe como punto fijo de 18 decimales y las comisiones como basis
@@ -16,17 +18,17 @@ import type { Address, Bps, SettlementPayout } from "./types.js";
  * Los precios y comisiones son parametros que pone quien lo usa.
  */
 
-export type BridgeAsset = "ETC" | "BTC";
+export type BridgeAsset = "HSK" | "BTC";
 
 export const BRIDGE_ASSETS: Record<BridgeAsset, { readonly decimals: number; readonly red: string }> = {
-  ETC: { decimals: 18, red: "Ethereum Classic" },
+  HSK: { decimals: 18, red: "HashKey Chain" },
   BTC: { decimals: 8, red: "Bitcoin" },
 };
 
 export const USDC_DECIMALS = 6;
 
-/** Donde termina el bridge. En testnet la red de Linea es Linea Sepolia. */
-export const BRIDGE_DESTINO = "Linea (Linea Sepolia en testnet)";
+/** Donde termina el bridge: el exchange retira por Ethereum y de ahi se pasa a Linea. */
+export const BRIDGE_DESTINO = "Linea (via Ethereum)";
 
 /** Decimales de los montos de un reparto: los del token nativo de la cadena. */
 export const POOL_DECIMALS = 18;
@@ -36,11 +38,11 @@ export const RATE_SCALE = 10n ** 18n;
 
 export interface BridgeTerms {
   readonly asset: BridgeAsset;
-  /** USDC por cada unidad entera del activo (1 ETC, 1 BTC), multiplicados por 10^18. */
+  /** USDC por cada unidad entera del activo (1 HSK, 1 BTC), multiplicados por 10^18. */
   readonly rateE18: bigint;
   /** Comision de la venta en el exchange, en basis points. */
   readonly tradeFeeBps: Bps;
-  /** Comision fija de retiro a Linea, en la unidad minima de USDC (6 decimales). */
+  /** Comision fija de sacar el USDC hasta Linea (retiro + bridge), en la unidad minima de USDC. */
   readonly withdrawalFee: bigint;
   /** Retiro minimo que acepta el exchange, en la unidad minima de USDC. */
   readonly minWithdrawal: bigint;
@@ -64,7 +66,7 @@ export interface BridgeQuote {
   readonly grossOut: bigint;
   readonly tradeFee: bigint;
   readonly withdrawalFee: bigint;
-  /** Los USDC que llegan a Linea. Es cero si la cotizacion fue rechazada. */
+  /** Los USDC que llegan a destino. Es cero si la cotizacion fue rechazada. */
   readonly netOut: bigint;
   /** `null` si el bridge es viable. */
   readonly rejection: BridgeRejection | null;
@@ -73,7 +75,7 @@ export interface BridgeQuote {
 /**
  * Pasa un monto del reparto (18 decimales) a la unidad minima del activo.
  *
- * ETC tiene 18 decimales, asi que el monto no cambia. BTC tiene 8: se divide,
+ * HSK tiene 18 decimales, asi que el monto no cambia. BTC tiene 8: se divide,
  * redondeando hacia abajo, y lo que no llega a un satoshi queda sin convertir.
  */
 export function poolAmountToAsset(amount: bigint, asset: BridgeAsset): bigint {

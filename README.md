@@ -209,21 +209,66 @@ el del estándar. La liquidación on-chain requiere `X402_SETTLER_KEY`; sin esa
 variable el pago se verifica igual y la respuesta lo dice explícitamente, en vez de
 aparentar un cobro que no ocurrió.
 
-## Bridge a USDC en Linea
+## Bridge a USDC en Linea (HashKey Exchange)
 
-Lo minado (ETC o BTC) se pasa a USDC en Linea a traves del exchange. La interfaz
-tiene una tarjeta que cotiza cuanto le llega a cada socio: el deposito del activo,
-la venta contra USDC y el retiro a Linea, con precio, comision de venta (bps),
-comision de retiro y retiro minimo editables.
+Lo minado (HSK o BTC) se pasa a USDC a traves de HashKey Exchange. Hay dos partes,
+separadas a proposito.
 
-- La logica esta en `orchestrator/src/domain/bridge.ts`, en `bigint` como el resto
-  del reparto: el precio es un punto fijo de 18 decimales y todo redondeo es hacia
-  abajo, asi que la cotizacion nunca promete mas de lo que se entregaria.
-- Cuando es viable conserva el valor: `bruto = comision de venta + comision de
-  retiro + neto`. Si las comisiones se comen el monto, o queda bajo el minimo del
-  exchange, la linea se marca como no viable y no promete USDC.
-- **Es una cotizacion simulada.** No mueve fondos ni consulta ningun exchange; los
-  precios de la pantalla son de demostracion. En testnet el destino es Linea Sepolia.
+### Cotizar (en la web, con datos reales)
+
+La tarjeta "Bridge a USDC en Linea" lee del exchange los precios de cada par y el
+costo de retirar USDC (datos publicos, sin credenciales) y cotiza cuanto le queda a
+cada socio. Precio, comisiones y costo del bridge se pueden editar.
+
+La ruta real, segun lo que HashKey lista hoy:
+
+```
+BTC -> BTC/USDT -> USDT/USDC -> retiro de USDC por Ethereum -> bridge Ethereum a Linea
+HSK -> HSK/USD  -> USDT/USD (compra) -> USDT/USDC -> retiro por Ethereum -> bridge a Linea
+```
+
+- **ETC no se puede**: HashKey Exchange no lo lista. BTC no tiene par contra USDC, asi
+  que pasa por USDT.
+- **HashKey no retira USDC a Linea**: sale por ERC20 (minimo 25 USDC, comision 1) y
+  el ultimo tramo, de Ethereum a Linea, es un bridge aparte. Su costo no se consulta.
+- La logica esta en `orchestrator/src/domain/bridge.ts` y `adapters/hashkeyMercado.ts`,
+  en `bigint` como el resto del reparto: todo redondeo es hacia abajo y la cotizacion
+  conserva el valor (`bruto = comision de venta + comision de retiro + neto`).
+
+### Operar (script local, con tu clave)
+
+```bash
+cp .env.example .env         # completar HASHKEY_API_KEY, HASHKEY_API_SECRET y el tope
+
+npm run hashkey -- mercado                     # precios, reglas y costos (sin clave)
+npm run hashkey -- saldo                       # tus saldos
+npm run hashkey -- probar  BTCUSDT SELL 0.001  # valida contra el exchange, no envia nada
+npm run hashkey -- ordenar BTCUSDT SELL 0.001  # orden real: pide escribir CONFIRMAR
+```
+
+Por defecto corre contra el **sandbox**. Para operar con dinero real, `HASHKEY_ENV=production`.
+
+Es un script local y no un endpoint de la web porque la web esta desplegada de forma
+publica: un endpoint que operara con tu clave permitiria a cualquiera mover tu dinero.
+`orchestrator/src/adapters/hashkeyCuenta.ts`, que firma y opera, no se exporta desde el
+paquete y la web no puede importarlo.
+
+Salvaguardas:
+
+- Solo se aceptan las operaciones de la ruta (vender BTC, vender HSK, comprar USDT con
+  USD, vender USDT por USDC). No se puede comprar BTC ni operar otro par.
+- Las ordenes son `LIMIT IOC` a un precio protegido: nunca peor que el mejor precio del
+  libro menos `HASHKEY_MAX_SLIPPAGE_BPS`. Se ejecutan al instante o se cancelan.
+- `HASHKEY_MAX_ORDER_USD` es obligatorio y se mide con el mayor entre el precio limite y
+  el de referencia.
+- `ordenar` valida primero con `orderTest`, pide `CONFIRMAR` escrito y se niega a correr
+  sin una terminal interactiva.
+- No hay retiros: sacar fondos se hace desde la web de HashKey, a una direccion en whitelist.
+- Crea la clave sin permiso de retiro.
+
+**Cuentas retail:** `exchangeInfo` marca `retailAllowed: false` en los cuatro pares de la
+ruta. Con una cuenta retail el exchange puede rechazar las ordenes; `probar` lo
+comprueba sin arriesgar nada.
 
 ## Cadenas
 
