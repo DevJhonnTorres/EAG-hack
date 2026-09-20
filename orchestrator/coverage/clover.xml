@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1789883606745" clover="3.2.0">
+  <project timestamp="1789883606745" name="All files">
+    <metrics statements="125" coveredstatements="123" conditionals="55" coveredconditionals="49" methods="30" coveredmethods="30" elements="210" coveredelements="202" complexity="0" loc="125" ncloc="125" packages="1" files="6" classes="6"/>
+    <file name="contribution.ts" path="/home/user/EAG-hack/orchestrator/src/domain/contribution.ts">
+      <metrics statements="37" coveredstatements="37" conditionals="18" coveredconditionals="17" methods="7" coveredmethods="7"/>
+      <line num="24" count="1" type="stmt"/>
+      <line num="27" count="1" type="stmt"/>
+      <line num="33" count="5" type="stmt"/>
+      <line num="34" count="5" type="stmt"/>
+      <line num="40" count="1033" type="stmt"/>
+      <line num="41" count="1033" type="cond" truecount="1" falsecount="0"/>
+      <line num="42" count="1" type="stmt"/>
+      <line num="47" count="2064" type="stmt"/>
+      <line num="48" count="1032" type="stmt"/>
+      <line num="50" count="1032" type="stmt"/>
+      <line num="51" count="2058" type="stmt"/>
+      <line num="55" count="2058" type="cond" truecount="1" falsecount="0"/>
+      <line num="56" count="2057" type="cond" truecount="1" falsecount="0"/>
+      <line num="57" count="1" type="stmt"/>
+      <line num="59" count="2056" type="stmt"/>
+      <line num="60" count="2053" type="stmt"/>
+      <line num="63" count="1027" type="stmt"/>
+      <line num="65" count="1027" type="stmt"/>
+      <line num="68" count="2054" type="stmt"/>
+      <line num="69" count="2054" type="cond" truecount="2" falsecount="0"/>
+      <line num="70" count="2054" type="cond" truecount="2" falsecount="0"/>
+      <line num="72" count="2054" type="cond" truecount="2" falsecount="0"/>
+      <line num="73" count="2054" type="stmt"/>
+      <line num="74" count="2054" type="stmt"/>
+      <line num="75" count="2054" type="stmt"/>
+      <line num="80" count="1027" type="stmt"/>
+      <line num="81" count="2054" type="stmt"/>
+      <line num="82" count="1027" type="cond" truecount="1" falsecount="1"/>
+      <line num="94" count="3081" type="stmt"/>
+      <line num="95" count="2054" type="stmt"/>
+      <line num="96" count="2054" type="stmt"/>
+      <line num="100" count="2056" type="cond" truecount="3" falsecount="0"/>
+      <line num="101" count="1" type="stmt"/>
+      <line num="105" count="2055" type="cond" truecount="1" falsecount="0"/>
+      <line num="106" count="1" type="stmt"/>
+      <line num="110" count="2054" type="cond" truecount="3" falsecount="0"/>
+      <line num="111" count="1" type="stmt"/>
+    </file>
+    <file name="energy.ts" path="/home/user/EAG-hack/orchestrator/src/domain/energy.ts">
+      <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="2"/>
+      <line num="5" count="1" type="stmt"/>
+      <line num="22" count="2040" type="stmt"/>
+      <line num="25" count="1020" type="stmt"/>
+    </file>
+    <file name="maintenance.ts" path="/home/user/EAG-hack/orchestrator/src/domain/maintenance.ts">
+      <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+      <line num="23" count="1020" type="stmt"/>
+    </file>
+    <file name="money.ts" path="/home/user/EAG-hack/orchestrator/src/domain/money.ts">
+      <metrics statements="38" coveredstatements="38" conditionals="20" coveredconditionals="19" methods="9" coveredmethods="9"/>
+      <line num="12" count="3" type="stmt"/>
+      <line num="16" count="4" type="stmt"/>
+      <line num="17" count="4" type="stmt"/>
+      <line num="22" count="42490" type="cond" truecount="1" falsecount="0"/>
+      <line num="27" count="1029" type="stmt"/>
+      <line num="28" count="1028" type="cond" truecount="4" falsecount="0"/>
+      <line num="29" count="3" type="stmt"/>
+      <line num="31" count="1025" type="stmt"/>
+      <line num="35" count="93887" type="stmt"/>
+      <line num="39" count="1020" type="cond" truecount="2" falsecount="0"/>
+      <line num="62" count="6029" type="stmt"/>
+      <line num="63" count="6028" type="cond" truecount="1" falsecount="0"/>
+      <line num="64" count="2" type="cond" truecount="1" falsecount="0"/>
+      <line num="65" count="1" type="stmt"/>
+      <line num="67" count="33391" type="stmt"/>
+      <line num="69" count="6025" type="stmt"/>
+      <line num="70" count="6025" type="stmt"/>
+      <line num="72" count="6025" type="stmt"/>
+      <line num="73" count="6025" type="stmt"/>
+      <line num="75" count="6025" type="cond" truecount="2" falsecount="0"/>
+      <line num="76" count="4" type="stmt"/>
+      <line num="77" count="4" type="stmt"/>
+      <line num="78" count="4" type="stmt"/>
+      <line num="79" count="6" type="stmt"/>
+      <line num="81" count="6" type="cond" truecount="2" falsecount="0"/>
+      <line num="84" count="6021" type="stmt"/>
+      <line num="85" count="33383" type="stmt"/>
+      <line num="86" count="33383" type="stmt"/>
+      <line num="87" count="33383" type="stmt"/>
+      <line num="91" count="6025" type="stmt"/>
+      <line num="94" count="6025" type="stmt"/>
+      <line num="95" count="33389" type="stmt"/>
+      <line num="96" count="62768" type="cond" truecount="4" falsecount="0"/>
+      <line num="98" count="6025" type="stmt"/>
+      <line num="99" count="22022" type="cond" truecount="1" falsecount="0"/>
+      <line num="100" count="15997" type="cond" truecount="1" falsecount="1"/>
+      <line num="101" count="15997" type="stmt"/>
+      <line num="104" count="6025" type="stmt"/>
+    </file>
+    <file name="settlement.ts" path="/home/user/EAG-hack/orchestrator/src/domain/settlement.ts">
+      <metrics statements="41" coveredstatements="39" conditionals="13" coveredconditionals="10" methods="7" coveredmethods="7"/>
+      <line num="25" count="4" type="stmt"/>
+      <line num="26" count="4" type="stmt"/>
+      <line num="47" count="1" type="stmt"/>
+      <line num="48" count="1" type="stmt"/>
+      <line num="49" count="1" type="stmt"/>
+      <line num="68" count="1021" type="stmt"/>
+      <line num="69" count="1021" type="cond" truecount="2" falsecount="0"/>
+      <line num="71" count="1021" type="stmt"/>
+      <line num="72" count="1020" type="stmt"/>
+      <line num="74" count="1020" type="stmt"/>
+      <line num="76" count="1020" type="stmt"/>
+      <line num="77" count="1020" type="stmt"/>
+      <line num="79" count="1020" type="stmt"/>
+      <line num="80" count="1020" type="stmt"/>
+      <line num="81" count="1020" type="stmt"/>
+      <line num="83" count="1020" type="stmt"/>
+      <line num="84" count="1020" type="stmt"/>
+      <line num="86" count="2040" type="stmt"/>
+      <line num="89" count="2040" type="stmt"/>
+      <line num="95" count="1020" type="stmt"/>
+      <line num="101" count="1020" type="stmt"/>
+      <line num="115" count="1020" type="stmt"/>
+      <line num="117" count="1020" type="stmt"/>
+      <line num="121" count="4080" type="stmt"/>
+      <line num="122" count="1020" type="cond" truecount="0" falsecount="1"/>
+      <line num="123" count="0" type="stmt"/>
+      <line num="136" count="6" type="cond" truecount="1" falsecount="0"/>
+      <line num="137" count="1" type="stmt"/>
+      <line num="141" count="5" type="cond" truecount="1" falsecount="0"/>
+      <line num="142" count="1" type="stmt"/>
+      <line num="146" count="4" type="cond" truecount="0" falsecount="1"/>
+      <line num="147" count="0" type="stmt"/>
+      <line num="152" count="4" type="stmt"/>
+      <line num="153" count="4" type="stmt"/>
+      <line num="154" count="17" type="stmt"/>
+      <line num="155" count="17" type="cond" truecount="1" falsecount="0"/>
+      <line num="156" count="1" type="stmt"/>
+      <line num="158" count="16" type="stmt"/>
+      <line num="161" count="3" type="stmt"/>
+      <line num="162" count="3" type="cond" truecount="1" falsecount="0"/>
+      <line num="163" count="1" type="stmt"/>
+    </file>
+    <file name="telemetryHash.ts" path="/home/user/EAG-hack/orchestrator/src/domain/telemetryHash.ts">
+      <metrics statements="5" coveredstatements="5" conditionals="4" coveredconditionals="3" methods="4" coveredmethods="4"/>
+      <line num="20" count="8" type="stmt"/>
+      <line num="21" count="2" type="cond" truecount="3" falsecount="1"/>
+      <line num="22" count="10" type="stmt"/>
+      <line num="28" count="8" type="stmt"/>
+      <line num="37" count="7" type="stmt"/>
+    </file>
+  </project>
+</coverage>
