@@ -40,9 +40,9 @@ contract PoolSplitterTest is Test {
     ///      y el resto 2:1 entre los socios.
     function _validPayouts() internal view returns (PoolSplitter.Payout[] memory payouts) {
         payouts = new PoolSplitter.Payout[](4);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
         payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
-        payouts[2] = PoolSplitter.Payout(partnerA, 0.50 ether, PoolRegistry.Role.PARTNER);
+        payouts[2] = PoolSplitter.Payout(partnerA, 0.5 ether, PoolRegistry.Role.PARTNER);
         payouts[3] = PoolSplitter.Payout(partnerB, 0.25 ether, PoolRegistry.Role.PARTNER);
     }
 
@@ -58,9 +58,9 @@ contract PoolSplitterTest is Test {
     function test_Settle_PagaExactamenteACadaDestinatario() public {
         _settle(1, _validPayouts(), GROSS);
 
-        assertEq(energyWallet.balance, 0.20 ether, "luz");
+        assertEq(energyWallet.balance, 0.2 ether, "luz");
         assertEq(maintenanceVault.balance, 0.05 ether, "mantenimiento");
-        assertEq(partnerA.balance, 0.50 ether, "socio A");
+        assertEq(partnerA.balance, 0.5 ether, "socio A");
         assertEq(partnerB.balance, 0.25 ether, "socio B");
     }
 
@@ -96,7 +96,7 @@ contract PoolSplitterTest is Test {
     ///         entero, no aporto hashrate y por lo tanto cobra cero. Es un reparto legitimo.
     function test_Settle_SocioApagadoCobraCero() public {
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](4);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
         payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
         payouts[2] = PoolSplitter.Payout(partnerA, 0.75 ether, PoolRegistry.Role.PARTNER);
         payouts[3] = PoolSplitter.Payout(partnerB, 0, PoolRegistry.Role.PARTNER);
@@ -110,11 +110,11 @@ contract PoolSplitterTest is Test {
 
     function test_Settle_MantenimientoPuedeSuperarElPiso() public {
         PoolSplitter.Payout[] memory payouts = _validPayouts();
-        payouts[1].amount = 0.10 ether; // por encima del 5% exigido
+        payouts[1].amount = 0.1 ether; // por encima del 5% exigido
         payouts[2].amount = 0.45 ether;
 
         _settle(1, payouts, GROSS);
-        assertEq(maintenanceVault.balance, 0.10 ether);
+        assertEq(maintenanceVault.balance, 0.1 ether);
     }
 
     // --------------------------------------------------------------------
@@ -162,7 +162,7 @@ contract PoolSplitterTest is Test {
 
     function test_RevertWhen_LasLineasSumanDeMas() public {
         PoolSplitter.Payout[] memory payouts = _validPayouts();
-        payouts[2].amount = 0.60 ether; // suma 1.1 ether
+        payouts[2].amount = 0.6 ether; // suma 1.1 ether
 
         vm.prank(safe);
         vm.expectRevert(abi.encodeWithSelector(PoolSplitter.PayoutSumMismatch.selector, 1.1 ether, GROSS));
@@ -171,12 +171,10 @@ contract PoolSplitterTest is Test {
 
     function test_RevertWhen_LasLineasSumanDeMenos() public {
         PoolSplitter.Payout[] memory payouts = _validPayouts();
-        payouts[2].amount = 0.50 ether - 1 wei; // falta exactamente un wei
+        payouts[2].amount = 0.5 ether - 1 wei; // falta exactamente un wei
 
         vm.prank(safe);
-        vm.expectRevert(
-            abi.encodeWithSelector(PoolSplitter.PayoutSumMismatch.selector, GROSS - 1 wei, GROSS)
-        );
+        vm.expectRevert(abi.encodeWithSelector(PoolSplitter.PayoutSumMismatch.selector, GROSS - 1 wei, GROSS));
         splitter.settle{value: GROSS}(1, TELEMETRY, payouts);
     }
 
@@ -262,7 +260,7 @@ contract PoolSplitterTest is Test {
     function test_RevertWhen_FaltaElPagoDeEnergia() public {
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](3);
         payouts[0] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
-        payouts[1] = PoolSplitter.Payout(partnerA, 0.60 ether, PoolRegistry.Role.PARTNER);
+        payouts[1] = PoolSplitter.Payout(partnerA, 0.6 ether, PoolRegistry.Role.PARTNER);
         payouts[2] = PoolSplitter.Payout(partnerB, 0.35 ether, PoolRegistry.Role.PARTNER);
 
         vm.prank(safe);
@@ -272,9 +270,9 @@ contract PoolSplitterTest is Test {
 
     function test_RevertWhen_FaltaElPagoDeMantenimiento() public {
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](3);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
-        payouts[1] = PoolSplitter.Payout(partnerA, 0.50 ether, PoolRegistry.Role.PARTNER);
-        payouts[2] = PoolSplitter.Payout(partnerB, 0.30 ether, PoolRegistry.Role.PARTNER);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
+        payouts[1] = PoolSplitter.Payout(partnerA, 0.5 ether, PoolRegistry.Role.PARTNER);
+        payouts[2] = PoolSplitter.Payout(partnerB, 0.3 ether, PoolRegistry.Role.PARTNER);
 
         vm.prank(safe);
         vm.expectRevert(abi.encodeWithSelector(PoolSplitter.ExpectedExactlyOneMaintenancePayout.selector, 0));
@@ -294,8 +292,8 @@ contract PoolSplitterTest is Test {
         PoolSplitter soloSplitter = new PoolSplitter(soloRegistry);
 
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](3);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.40 ether, PoolRegistry.Role.ENERGY);
-        payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.60 ether, PoolRegistry.Role.MAINTENANCE);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.4 ether, PoolRegistry.Role.ENERGY);
+        payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.6 ether, PoolRegistry.Role.MAINTENANCE);
         payouts[2] = PoolSplitter.Payout(energyWallet, 0, PoolRegistry.Role.ENERGY);
 
         vm.prank(safe);
@@ -305,8 +303,8 @@ contract PoolSplitterTest is Test {
 
     function test_RevertWhen_HayMenosDeTresLineas() public {
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](2);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.50 ether, PoolRegistry.Role.ENERGY);
-        payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.50 ether, PoolRegistry.Role.MAINTENANCE);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.5 ether, PoolRegistry.Role.ENERGY);
+        payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.5 ether, PoolRegistry.Role.MAINTENANCE);
 
         vm.prank(safe);
         vm.expectRevert(abi.encodeWithSelector(PoolSplitter.TooFewPayouts.selector, 2));
@@ -336,19 +334,19 @@ contract PoolSplitterTest is Test {
         PoolSplitter spl = new PoolSplitter(reg);
 
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](4);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
         payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
-        payouts[2] = PoolSplitter.Payout(address(hostil), 0.50 ether, PoolRegistry.Role.PARTNER);
+        payouts[2] = PoolSplitter.Payout(address(hostil), 0.5 ether, PoolRegistry.Role.PARTNER);
         payouts[3] = PoolSplitter.Payout(partnerB, 0.25 ether, PoolRegistry.Role.PARTNER);
 
         vm.prank(safe);
         spl.settle{value: GROSS}(1, TELEMETRY, payouts);
 
         assertEq(partnerB.balance, 0.25 ether, "el socio sano cobra igual");
-        assertEq(energyWallet.balance, 0.20 ether, "la luz se paga igual");
-        assertEq(spl.credits(address(hostil)), 0.50 ether, "el pago fallido queda acreditado");
-        assertEq(spl.totalCredited(), 0.50 ether);
-        assertEq(address(spl).balance, 0.50 ether, "el contrato retiene solo lo acreditado");
+        assertEq(energyWallet.balance, 0.2 ether, "la luz se paga igual");
+        assertEq(spl.credits(address(hostil)), 0.5 ether, "el pago fallido queda acreditado");
+        assertEq(spl.totalCredited(), 0.5 ether);
+        assertEq(address(spl).balance, 0.5 ether, "el contrato retiene solo lo acreditado");
     }
 
     /// @notice Un destinatario que quema gas tampoco puede tumbar la liquidacion: el
@@ -363,16 +361,16 @@ contract PoolSplitterTest is Test {
         PoolSplitter spl = new PoolSplitter(reg);
 
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](4);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
         payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
-        payouts[2] = PoolSplitter.Payout(address(burner), 0.50 ether, PoolRegistry.Role.PARTNER);
+        payouts[2] = PoolSplitter.Payout(address(burner), 0.5 ether, PoolRegistry.Role.PARTNER);
         payouts[3] = PoolSplitter.Payout(partnerB, 0.25 ether, PoolRegistry.Role.PARTNER);
 
         vm.prank(safe);
         spl.settle{value: GROSS}(1, TELEMETRY, payouts);
 
         assertEq(partnerB.balance, 0.25 ether, "el resto del pool cobra");
-        assertEq(spl.credits(address(burner)), 0.50 ether, "el hostil queda acreditado");
+        assertEq(spl.credits(address(burner)), 0.5 ether, "el hostil queda acreditado");
     }
 
     function test_RetiroDeUnPagoAcreditado() public {
@@ -389,21 +387,21 @@ contract PoolSplitterTest is Test {
         vm.etch(partnerA, address(new RejectingRecipient()).code);
 
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](4);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
         payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
-        payouts[2] = PoolSplitter.Payout(partnerA, 0.50 ether, PoolRegistry.Role.PARTNER);
+        payouts[2] = PoolSplitter.Payout(partnerA, 0.5 ether, PoolRegistry.Role.PARTNER);
         payouts[3] = PoolSplitter.Payout(partnerB, 0.25 ether, PoolRegistry.Role.PARTNER);
 
         vm.prank(safe);
         spl.settle{value: GROSS}(1, TELEMETRY, payouts);
-        assertEq(spl.credits(partnerA), 0.50 ether);
+        assertEq(spl.credits(partnerA), 0.5 ether);
 
         // El socio corrige su wallet y retira.
         vm.etch(partnerA, address(wallet).code);
         vm.prank(partnerA);
         spl.withdraw();
 
-        assertEq(partnerA.balance, 0.50 ether, "retiro completo");
+        assertEq(partnerA.balance, 0.5 ether, "retiro completo");
         assertEq(spl.credits(partnerA), 0, "credito consumido");
         assertEq(spl.totalCredited(), 0);
         assertEq(address(spl).balance, 0, "el contrato vuelve a cero");
@@ -424,6 +422,8 @@ contract PoolSplitterTest is Test {
         vm.prank(intruder);
         (bool success, bytes memory data) = address(splitter).call{value: 1 ether}("");
         assertFalse(success, "el deposito suelto debe rechazarse");
+        // casting to 'bytes4' is safe because solo interesan los 4 bytes del selector de error
+        // forge-lint: disable-next-line(unsafe-typecast)
         assertEq(bytes4(data), PoolSplitter.DirectDepositNotAllowed.selector);
     }
 
@@ -449,22 +449,22 @@ contract PoolSplitterTest is Test {
         PoolSplitter spl = new PoolSplitter(reg);
 
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](4);
-        payouts[0] = PoolSplitter.Payout(energyWallet, 0.20 ether, PoolRegistry.Role.ENERGY);
+        payouts[0] = PoolSplitter.Payout(energyWallet, 0.2 ether, PoolRegistry.Role.ENERGY);
         payouts[1] = PoolSplitter.Payout(maintenanceVault, 0.05 ether, PoolRegistry.Role.MAINTENANCE);
-        payouts[2] = PoolSplitter.Payout(address(hostil), 0.50 ether, PoolRegistry.Role.PARTNER);
+        payouts[2] = PoolSplitter.Payout(address(hostil), 0.5 ether, PoolRegistry.Role.PARTNER);
         payouts[3] = PoolSplitter.Payout(partnerB, 0.25 ether, PoolRegistry.Role.PARTNER);
 
         vm.prank(safe);
         spl.settle{value: GROSS}(1, TELEMETRY, payouts);
 
         // Llega saldo forzado ademas del credito pendiente.
-        vm.deal(address(spl), 0.50 ether + 2 ether);
+        vm.deal(address(spl), 0.5 ether + 2 ether);
 
         vm.prank(safe);
         spl.sweepUnaccounted();
 
-        assertEq(address(spl).balance, 0.50 ether, "el credito del socio sigue intacto");
-        assertEq(spl.credits(address(hostil)), 0.50 ether);
+        assertEq(address(spl).balance, 0.5 ether, "el credito del socio sigue intacto");
+        assertEq(spl.credits(address(hostil)), 0.5 ether);
     }
 
     function test_RevertWhen_SweepSinSaldoLibre() public {
@@ -526,7 +526,7 @@ contract PoolSplitterTest is Test {
     function testFuzz_RechazaTodaSumaQueNoCuadre(uint96 delta) public {
         vm.assume(delta > 0);
         PoolSplitter.Payout[] memory payouts = _validPayouts();
-        payouts[2].amount = uint256(0.50 ether) + uint256(delta);
+        payouts[2].amount = uint256(0.5 ether) + uint256(delta);
 
         uint256 expectedSum = GROSS + uint256(delta);
 

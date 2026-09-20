@@ -90,6 +90,8 @@ contract PoolRegistryTest is Test {
     function test_RevertWhen_SeSuperaElTopeDeSocios() public {
         address[] memory partners = new address[](17);
         for (uint256 i = 0; i < 17; ++i) {
+            // casting to 'uint160' is safe because 1000 + i <= 1016, muy por debajo del rango
+            // forge-lint: disable-next-line(unsafe-typecast)
             partners[i] = address(uint160(1000 + i));
         }
         vm.expectRevert(abi.encodeWithSelector(PoolRegistry.TooManyPartners.selector, 16));

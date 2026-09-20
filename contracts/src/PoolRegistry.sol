@@ -21,7 +21,6 @@ contract PoolRegistry {
         PARTNER, // socio que aporta hardware
         ENERGY, // wallet administrativa que paga la factura de luz
         MAINTENANCE // vault del fondo de repuestos y mantenimiento
-
     }
 
     /// @notice Tope de seguridad del fondo de mantenimiento: 50%.

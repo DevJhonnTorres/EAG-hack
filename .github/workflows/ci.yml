@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  contratos:
+    name: Contratos (Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      # Foundry llega como dependencia de npm, con la version fijada en
+      # package.json. El CI compila con exactamente el mismo compilador que
+      # cualquier integrante del equipo en su maquina.
+      - run: npm ci
+      - name: Formato
+        run: npx forge fmt --root contracts --check
+      - name: Compilacion
+        run: npx forge build --root contracts
+      - name: Tests, fuzzing y invariantes
+        run: FOUNDRY_PROFILE=ci npx forge test --root contracts -vv
+      - name: Cobertura
+        run: npx forge coverage --root contracts --report summary --no-match-path 'test/PoolSplitter.invariant.t.sol'
+
+  orquestador:
+    name: Motor de calculo (TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck --workspace @hashpool/orchestrator
+      - name: Tests y cobertura
+        run: npm run test:coverage --workspace @hashpool/orchestrator

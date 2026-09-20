@@ -66,7 +66,9 @@ contract PoolSplitter {
     event SettlementExecuted(
         uint256 indexed epochId, uint256 gross, bytes32 indexed telemetryHash, uint256 payoutCount
     );
-    event PayoutSent(uint256 indexed epochId, address indexed to, PoolRegistry.Role indexed role, uint256 amount);
+    event PayoutSent(
+        uint256 indexed epochId, address indexed to, PoolRegistry.Role indexed role, uint256 amount
+    );
     event PayoutCredited(uint256 indexed epochId, address indexed to, uint256 amount);
     event Withdrawn(address indexed account, uint256 amount);
     event UnaccountedSwept(address indexed to, uint256 amount);
