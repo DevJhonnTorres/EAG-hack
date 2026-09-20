@@ -2,8 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import {
   CadenaIncorrectaError,
   RECHAZADA_POR_LA_PERSONA,
+  SOLICITUD_PENDIENTE,
   asegurarCadena,
   codigoRpc,
+  mensajeDeWallet,
   type DatosCadena,
   type ProveedorRpc,
 } from "../src/adapters/cadena.js";
@@ -89,6 +91,29 @@ describe("codigoRpc", () => {
   it("devuelve indefinido cuando no hay codigo", () => {
     expect(codigoRpc(new Error("cualquier cosa"))).toBeUndefined();
     expect(codigoRpc(null)).toBeUndefined();
+  });
+});
+
+describe("mensajeDeWallet", () => {
+  /** El error exacto que devolvio MetaMask al pulsar "Conectar" dos veces. */
+  it("explica que hay una solicitud abierta en la wallet", () => {
+    const error = Object.assign(
+      new Error("could not coalesce error (error={ \"code\": -32002 ... })"),
+      { code: "UNKNOWN_ERROR", error: { code: SOLICITUD_PENDIENTE, message: "already pending" } },
+    );
+    const mensaje = mensajeDeWallet(error);
+    expect(mensaje).toMatch(/solicitud abierta/);
+    expect(mensaje).not.toMatch(/coalesce/);
+  });
+
+  it("avisa cuando la persona rechazo la solicitud", () => {
+    expect(mensajeDeWallet(errorDeEthers(RECHAZADA_POR_LA_PERSONA))).toMatch(/Rechazaste/);
+  });
+
+  it("conserva el mensaje original para cualquier otro fallo", () => {
+    expect(mensajeDeWallet(new Error("fondos insuficientes"))).toBe("fondos insuficientes");
+    expect(mensajeDeWallet("texto suelto")).toBe("texto suelto");
+    expect(mensajeDeWallet(errorDeEthers(4902))).toBe("could not coalesce error");
   });
 });
 

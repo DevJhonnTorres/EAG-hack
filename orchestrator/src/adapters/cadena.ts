@@ -60,6 +60,26 @@ export function codigoRpc(causa: unknown): number | undefined {
   return undefined;
 }
 
+/** -32002: la wallet ya tiene una solicitud abierta de este sitio y espera respuesta. */
+export const SOLICITUD_PENDIENTE = -32002;
+
+/**
+ * Texto para mostrar cuando la wallet falla.
+ *
+ * El mensaje crudo de ethers ("could not coalesce error ...") no le dice nada a
+ * quien esta usando la pagina. Los dos casos que si tienen accion clara se
+ * traducen; cualquier otro conserva el mensaje original, que es lo que ayuda a
+ * diagnosticar.
+ */
+export function mensajeDeWallet(causa: unknown): string {
+  const codigo = codigoRpc(causa);
+  if (codigo === SOLICITUD_PENDIENTE) {
+    return "La wallet ya tiene una solicitud abierta de esta pagina. Abre la extension, aprueba o rechaza esa solicitud y vuelve a intentar.";
+  }
+  if (codigo === RECHAZADA_POR_LA_PERSONA) return "Rechazaste la solicitud en la wallet.";
+  return causa instanceof Error ? causa.message : String(causa);
+}
+
 export interface AsegurarCadenaOpciones {
   /** Cuantas veces se reconsulta la cadena antes de darla por fallida. */
   readonly intentos?: number;

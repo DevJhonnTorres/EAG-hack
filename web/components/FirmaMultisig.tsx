@@ -7,6 +7,7 @@ import {
   buildSafeTransaction,
   computeSafeTxHash,
   encodeSignatures,
+  mensajeDeWallet,
   safeDomain,
   type OwnerSignature,
   type SafeTransaction,
@@ -132,7 +133,7 @@ export function FirmaMultisig({
       setProvider(p);
       setCuenta(getAddress(c));
     } catch (causa) {
-      setError(causa instanceof Error ? causa.message : String(causa));
+      setError(mensajeDeWallet(causa));
     } finally {
       setOcupado(false);
     }
@@ -152,7 +153,7 @@ export function FirmaMultisig({
       );
       agregarFirma({ signer: await signer.getAddress(), signature: firma });
     } catch (causa) {
-      setError(causa instanceof Error ? causa.message : String(causa));
+      setError(mensajeDeWallet(causa));
     } finally {
       setOcupado(false);
     }
@@ -213,7 +214,7 @@ export function FirmaMultisig({
       setFirmas([]);
       await leerSafe();
     } catch (causa) {
-      setError(causa instanceof Error ? causa.message : String(causa));
+      setError(mensajeDeWallet(causa));
     } finally {
       setOcupado(false);
     }
