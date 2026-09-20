@@ -56,3 +56,27 @@ export async function conectar(cadena: DatosCadena): Promise<{ provider: Browser
   // conserva ese dato cacheado, que despues enturbia el envio de transacciones.
   return { provider: nuevoProvider(), cuenta };
 }
+
+/**
+ * Pide a la wallet que deje elegir otra cuenta para este sitio y devuelve la elegida.
+ *
+ * MetaMask solo entrega a una pagina las cuentas que la persona le autorizo. Cambiar
+ * de cuenta en la extension no basta: la pagina sigue viendo la que conecto antes. Este
+ * pedido abre el selector de cuentas de la wallet, donde se autoriza la que se quiere.
+ */
+export async function elegirOtraCuenta(cadena: DatosCadena): Promise<{ provider: BrowserProvider; cuenta: string }> {
+  if (!haySoporteDeWallet()) throw new SinWalletError();
+  await window.ethereum!.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+  return conectar(cadena);
+}
+
+/**
+ * Avisa cuando la persona cambia de cuenta en la wallet. Devuelve la funcion que deja
+ * de escuchar. Sin wallet, no hace nada.
+ */
+export function alCambiarCuenta(manejador: (cuentas: string[]) => void): () => void {
+  const wallet = typeof window !== "undefined" ? window.ethereum : undefined;
+  if (!wallet?.on) return () => {};
+  wallet.on("accountsChanged", manejador);
+  return () => wallet.removeListener?.("accountsChanged", manejador);
+}

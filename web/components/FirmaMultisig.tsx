@@ -15,7 +15,14 @@ import {
   type Settlement,
 } from "@hashpool/orchestrator";
 import { SAFE_ABI } from "@/lib/safeAbi";
-import { asegurarCadena, conectar, haySoporteDeWallet, type DatosCadena } from "@/lib/wallet";
+import {
+  alCambiarCuenta,
+  asegurarCadena,
+  conectar,
+  elegirOtraCuenta,
+  haySoporteDeWallet,
+  type DatosCadena,
+} from "@/lib/wallet";
 import { lectorDeCadena } from "@/lib/lector";
 import { POOL_SPLITTER_ABI, encodeSettle } from "@/lib/calldata";
 import { acortarDireccion, formatUnidades } from "@/lib/format";
@@ -138,6 +145,30 @@ export function FirmaMultisig({
 
   const esDueno = cuenta && estado?.owners.some((o) => o.toLowerCase() === cuenta.toLowerCase());
 
+  // Si la persona cambia de cuenta en la wallet, la pantalla la sigue en vez de seguir
+  // mostrando la anterior. Solo escucha mientras hay una cuenta conectada.
+  useEffect(() => {
+    if (!cuenta) return;
+    return alCambiarCuenta((cuentas) => {
+      setError(null);
+      setCuenta(cuentas[0] ? getAddress(cuentas[0]) : null);
+    });
+  }, [cuenta]);
+
+  const cambiarCuenta = async () => {
+    setError(null);
+    setOcupado(true);
+    try {
+      const { provider: p, cuenta: c } = await elegirOtraCuenta(cadena);
+      setProvider(p);
+      setCuenta(getAddress(c));
+    } catch (causa) {
+      setError(mensajeDeWallet(causa));
+    } finally {
+      setOcupado(false);
+    }
+  };
+
   const conectarWallet = async () => {
     setError(null);
     setOcupado(true);
@@ -249,7 +280,7 @@ export function FirmaMultisig({
         <h2 style={{ margin: 0 }}>Multisig signature</h2>
         {cuenta ? (
           <span className="chip">
-            {acortarDireccion(cuenta)} {esDueno ? "· owner" : "· not an owner"}
+            {acortarDireccion(cuenta)} {!estado ? "· checking..." : esDueno ? "· owner" : "· not an owner"}
           </span>
         ) : (
           <button className="primario" onClick={() => void conectarWallet()} disabled={ocupado}>
@@ -296,6 +327,19 @@ export function FirmaMultisig({
           {hashesCoinciden
             ? "The hash to sign matches the one the vault contract returns."
             : "The computed hash does NOT match the contract's. Do not sign: the Safe would reject it."}
+        </div>
+      )}
+
+      {cuenta && estado && !esDueno && (
+        <div className="aviso error">
+          The connected wallet ({acortarDireccion(cuenta)}) is not an owner of this vault, so it cannot sign. The
+          owner is <span className="mono">{estado.owners.join(", ")}</span>. In MetaMask, select that account and
+          press &quot;Switch account&quot; to authorize it for this page.
+          <div style={{ marginTop: 10 }}>
+            <button onClick={() => void cambiarCuenta()} disabled={ocupado}>
+              Switch account
+            </button>
+          </div>
         </div>
       )}
 
