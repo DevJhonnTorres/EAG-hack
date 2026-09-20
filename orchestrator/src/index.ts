@@ -8,3 +8,4 @@ export * from "./domain/telemetryHash.js";
 export * from "./adapters/mockTelemetry.js";
 export * from "./adapters/safe.js";
 export * from "./adapters/blockscout.js";
+export * from "./adapters/x402.js";

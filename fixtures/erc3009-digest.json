@@ -1,0 +1,13 @@
+{
+  "asset": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+  "chainId": 133,
+  "expectedDigest": "0xc5786576decdbbc87ba013e169dc0f60bea1c15f97ca2a9b3d457ee4f46a8f8a",
+  "from": "0x92302923eBE05EC3984A49755346Cf02327e7CA5",
+  "name": "HashPool Credit",
+  "nonce": "0x193bbf5627207cc1490a978a86178b39c0ba1ce5fc3c97a3cc18d79c25bc8756",
+  "to": "0xcd23dAd3cDb7eb7046829f033c92107fC60F316b",
+  "validAfter": 1700000000,
+  "validBefore": 1700000300,
+  "value": 1000,
+  "version": "1"
+}

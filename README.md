@@ -167,6 +167,7 @@ Contratos verificados en Blockscout — el código es auditable por cualquiera.
 | **Vault de mantenimiento** (Safe 2-de-2) | [`0x8cFA796c87e83963052263A06329F1Ef52DE5653`](https://testnet-explorer.hskchain.net/address/0x8cFA796c87e83963052263A06329F1Ef52DE5653) |
 | **PoolRegistry** ✓ verificado | [`0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f`](https://testnet-explorer.hskchain.net/address/0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f) |
 | **PoolSplitter** ✓ verificado | [`0x333FAd08F22752896C55C052352AcE6C6Ab620B7`](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7) |
+| **PoolCredit** (ERC-3009, x402) ✓ verificado | [`0x891a0838Af855147b5E911576E2224c8a23280e4`](https://testnet-explorer.hskchain.net/address/0x891a0838Af855147b5E911576E2224c8a23280e4) |
 
 Destinatarios del reparto:
 
@@ -178,6 +179,35 @@ Destinatarios del reparto:
 
 Los dos socios son los dueños del baúl, con umbral de **2 firmas**: ninguno puede
 mover los fondos por su cuenta.
+
+## El agente que se paga solo (x402)
+
+El motor necesita insumos que no son gratis: la tarifa eléctrica vigente, el precio
+del coin. Con **x402** el proveedor responde `402 Payment Required` describiendo su
+precio, el agente firma una autorización de pago y reintenta la llamada.
+
+Eso cierra el bucle del proyecto: el hardware genera ingresos → el fondo de
+mantenimiento reserva una porción → **el agente se financia sus propios datos**.
+Máquina a máquina, sin que ningún humano apruebe cada consulta.
+
+Se implementa el esquema `exact` sobre EVM, que paga con una autorización
+**ERC-3009** firmada fuera de la cadena: quien cobra la presenta y paga el gas, así
+que el agente no necesita gas ni estar en línea.
+
+```
+GET /api/tarifa                       → 402 + PAYMENT-REQUIRED
+GET /api/tarifa + PAYMENT-SIGNATURE   → 200 + el dato + PAYMENT-RESPONSE
+```
+
+Probado de punta a punta contra HSKChain: el saldo del oráculo pasó de 0 a 1000
+unidades con la transacción [`0x4265a470…97df5`](https://testnet-explorer.hskchain.net/tx/0x4265a4702124b7da2cf719f251dc0f3d374040e86352127085b34739e9b97df5).
+
+**Alcance honesto:** x402 prevé un *facilitator* que verifica y liquida por cuenta
+del vendedor. En HSKChain no hay ninguno público, así que este servidor hace las dos
+cosas. El formato del protocolo —los tres headers y los objetos que transportan— es
+el del estándar. La liquidación on-chain requiere `X402_SETTLER_KEY`; sin esa
+variable el pago se verifica igual y la respuesta lo dice explícitamente, en vez de
+aparentar un cobro que no ocurrió.
 
 ## Cadenas
 

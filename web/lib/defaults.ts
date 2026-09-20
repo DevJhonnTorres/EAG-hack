@@ -88,4 +88,6 @@ export const CONTRATOS = {
   vaultMantenimiento: "0x8cFA796c87e83963052263A06329F1Ef52DE5653",
   registry: "0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f",
   splitter: "0x333FAd08F22752896C55C052352AcE6C6Ab620B7",
+  /** Token ERC-3009 con el que el agente paga sus insumos de datos via x402. */
+  credito: "0x891a0838Af855147b5E911576E2224c8a23280e4",
 } as const;
