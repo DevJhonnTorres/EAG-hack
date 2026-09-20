@@ -24,6 +24,7 @@ import { acortarDireccion, formatUnidades, formatearDuracion, parseUnidades, por
 import { buildSafeTransaction } from "@/lib/calldata";
 import { Historial } from "@/components/Historial";
 import { FirmaMultisig } from "@/components/FirmaMultisig";
+import { Bridge } from "@/components/Bridge";
 
 const builder = new SettlementBuilder();
 const CADENA = CADENAS[133];
@@ -183,6 +184,7 @@ export default function Page() {
             setDeudaArrastrada={setDeudaArrastrada}
           />
           <Reparto resultado={resultado} config={config} />
+          <Bridge settlement={resultado.settlement} />
           <TransaccionAFirmar
             settlement={resultado.settlement}
             telemetryHash={telemetryHash}

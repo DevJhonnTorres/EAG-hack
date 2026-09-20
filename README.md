@@ -209,6 +209,22 @@ el del estándar. La liquidación on-chain requiere `X402_SETTLER_KEY`; sin esa
 variable el pago se verifica igual y la respuesta lo dice explícitamente, en vez de
 aparentar un cobro que no ocurrió.
 
+## Bridge a USDC en Linea
+
+Lo minado (ETC o BTC) se pasa a USDC en Linea a traves del exchange. La interfaz
+tiene una tarjeta que cotiza cuanto le llega a cada socio: el deposito del activo,
+la venta contra USDC y el retiro a Linea, con precio, comision de venta (bps),
+comision de retiro y retiro minimo editables.
+
+- La logica esta en `orchestrator/src/domain/bridge.ts`, en `bigint` como el resto
+  del reparto: el precio es un punto fijo de 18 decimales y todo redondeo es hacia
+  abajo, asi que la cotizacion nunca promete mas de lo que se entregaria.
+- Cuando es viable conserva el valor: `bruto = comision de venta + comision de
+  retiro + neto`. Si las comisiones se comen el monto, o queda bajo el minimo del
+  exchange, la linea se marca como no viable y no promete USDC.
+- **Es una cotizacion simulada.** No mueve fondos ni consulta ningun exchange; los
+  precios de la pantalla son de demostracion. En testnet el destino es Linea Sepolia.
+
 ## Cadenas
 
 | Red | Chain ID | RPC | Explorer |

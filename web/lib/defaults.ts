@@ -1,4 +1,4 @@
-import type { PoolConfig, RigSpec } from "@hashpool/orchestrator";
+import type { BridgeAsset, PoolConfig, RigSpec } from "@hashpool/orchestrator";
 
 /** Catalogo de GPUs para el selector de la interfaz. */
 export const GPU_CATALOG = [
@@ -57,6 +57,26 @@ export const CONFIG_INICIAL: PoolConfig = {
  * verdad, y el boton de ejecutar no aparece deshabilitado por falta de fondos.
  */
 export const BRUTO_INICIAL = 2n * 10n ** 16n;
+
+/**
+ * Parametros de demostracion del bridge a USDC en Linea.
+ *
+ * Son valores de ejemplo, no cotizaciones: ningun exchange se consulta. Se dejan
+ * como texto porque se editan desde la pantalla y se convierten a enteros recien
+ * al calcular. La comision de retiro es chica a proposito: el reparto de la demo
+ * es de centavos, y con la comision real de un retiro (del orden de 1 USDC) el
+ * bridge saldria inviable y la demostracion no mostraria nada.
+ */
+export const BRIDGE_INICIAL: Record<
+  BridgeAsset,
+  { precio: string; comisionRetiro: string; retiroMinimo: string }
+> = {
+  ETC: { precio: "20", comisionRetiro: "0.01", retiroMinimo: "0.05" },
+  BTC: { precio: "100000", comisionRetiro: "0.01", retiroMinimo: "0.05" },
+};
+
+/** Comision de venta en el exchange: 0,20%. */
+export const COMISION_VENTA_BPS_INICIAL = 20;
 
 export const CADENAS = {
   133: {
