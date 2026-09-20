@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+
+# Artefactos de Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/forge-std/out/
+
+# Entorno: nunca commitear claves, ni siquiera de testnet
+.env
+.env.local
+.env.*.local
+
+# Next.js
+web/.next/
+web/out/
+.vercel/
+
+# TypeScript
+orchestrator/dist/
+*.tsbuildinfo
+
+# Sistema
+.DS_Store
+*.log
