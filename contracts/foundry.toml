@@ -10,7 +10,12 @@ optimizer_runs = 200
 via_ir = false
 # El dinero se mueve en enteros: cualquier truncamiento silencioso es un bug.
 deny = "never"
-fs_permissions = [{ access = "read", path = "./out" }]
+fs_permissions = [
+    {access = "read", path = "./out"},
+    # Permite regenerar el fixture de firma que verifica el orquestador contra
+    # el hash que produce el Safe real.
+    {access = "read-write", path = "../fixtures"},
+]
 
 [profile.default.fuzz]
 runs = 1024

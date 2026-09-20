@@ -8,13 +8,17 @@
     "web"
   ],
   "scripts": {
+    "postinstall": "node tools/link-foundry.mjs",
+    "foundry": "node tools/link-foundry.mjs",
     "build": "npm run build --workspace @hashpool/orchestrator && npm run build --workspace web",
     "test": "npm run test:sol && npm run test:ts",
-    "test:sol": "forge test --root contracts -vv",
-    "test:ts": "npm run test --workspace orchestrator",
-    "fmt:sol": "forge fmt --root contracts",
-    "build:sol": "forge build --root contracts",
-    "postinstall": "node tools/link-foundry.mjs"
+    "test:sol": "npm run foundry && forge test --root contracts -vv",
+    "test:ts": "npm run test --workspace @hashpool/orchestrator",
+    "test:fork": "npm run foundry && forge test --root contracts --match-path \"test/fork/*\" -vv",
+    "build:sol": "npm run foundry && forge build --root contracts",
+    "fmt:sol": "npm run foundry && forge fmt --root contracts",
+    "coverage:sol": "npm run foundry && forge coverage --root contracts --report summary --no-match-path \"test/PoolSplitter.invariant.t.sol\"",
+    "fixtures:safe": "npm run foundry && forge test --root contracts --match-contract SafeTxHashFixture"
   },
   "devDependencies": {
     "@foundry-rs/anvil": "1.7.1",
