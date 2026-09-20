@@ -6,6 +6,7 @@ import {
   type HashKeyEnv,
   type Lado,
   type MejorPrecio,
+  type PasoRuta,
   type ReglasSimbolo,
 } from "./hashkeyMercado.js";
 
@@ -80,8 +81,9 @@ const SLIPPAGE_MAXIMO_BPS = 500;
 /**
  * Decide si una orden se puede enviar y con que parametros.
  *
- * Es pura: no llama a la red. Recibe las reglas del par y el mejor precio del
- * libro ya leidos, y devuelve la orden exacta o la rechaza con un motivo.
+ * Es pura: no llama a la red. Recibe las reglas del par, el mejor precio del
+ * libro y las operaciones permitidas (las de la ruta a USDC, descubiertas con las
+ * reglas del propio exchange), y devuelve la orden exacta o la rechaza con un motivo.
  *
  * La orden es LIMIT con `IOC` (se ejecuta al instante o se cancela) a un precio
  * protegido: nunca peor que el mejor precio del libro menos el margen de
@@ -93,10 +95,11 @@ export function planificarOrden(
   reglas: ReglasSimbolo | undefined,
   libro: MejorPrecio,
   limites: LimitesOrden,
+  permitidos: readonly PasoRuta[],
 ): OrdenPlan {
   const { symbol, side } = entrada;
 
-  if (!ordenPermitida(symbol, side)) {
+  if (!ordenPermitida(symbol, side, permitidos)) {
     throw new OrdenRechazadaError(`${side} ${symbol} no forma parte de la ruta a USDC`);
   }
   if (!reglas) throw new OrdenRechazadaError(`el exchange no informo las reglas de ${symbol}`);
@@ -146,6 +149,19 @@ export interface Saldo {
   readonly total: string;
   readonly free: string;
   readonly locked: string;
+}
+
+/** Comision de un par para esta cuenta, como fraccion decimal: `0.002` es 0,20%. */
+export interface ComisionDePar {
+  readonly symbol: string;
+  readonly taker: string;
+  readonly maker: string;
+}
+
+export interface ComisionesCuenta {
+  readonly vipLevel: string;
+  readonly tradeVol30Day: string;
+  readonly pares: readonly ComisionDePar[];
 }
 
 export interface RespuestaOrden {
@@ -206,7 +222,8 @@ export class HashKeyCuenta {
   async #firmada(metodo: "GET" | "POST", ruta: string, params: Readonly<Record<string, string>>): Promise<unknown> {
     const todos = { ...params, recvWindow: "5000", timestamp: String(this.#ahora()) };
     const query = Object.entries(todos)
-      .map(([clave, valor]) => `${clave}=${encodeURIComponent(valor)}`)
+      // La coma se deja tal cual (`symbols=A,B`): es como el exchange documenta las listas.
+      .map(([clave, valor]) => `${clave}=${encodeURIComponent(valor).replace(/%2C/gi, ",")}`)
       .join("&");
     const firma = firmar(this.#apiSecret, query);
 
@@ -245,6 +262,34 @@ export class HashKeyCuenta {
       free: texto(b["free"]) ?? "0",
       locked: texto(b["locked"]) ?? "0",
     }));
+  }
+
+  /**
+   * Comisiones que esta cuenta paga en cada par, con su nivel VIP y descuentos.
+   *
+   * Las ordenes de este modulo son LIMIT IOC: se ejecutan al instante contra el
+   * libro, o sea que pagan la tasa de `taker`, que es la que importa para cotizar.
+   */
+  async comisiones(symbols: readonly string[]): Promise<ComisionesCuenta> {
+    const cuerpo = await this.#firmada("GET", "/api/v1/account/vipInfo", { symbols: symbols.join(",") });
+    const datos = esObjeto(cuerpo) ? cuerpo : {};
+    const filas = Array.isArray(datos["data"]) ? datos["data"] : [];
+
+    const pares: ComisionDePar[] = [];
+    for (const fila of filas) {
+      if (!esObjeto(fila)) continue;
+      const symbol = texto(fila["symbol"]);
+      const taker = texto(fila["actualTakerRate"]);
+      const maker = texto(fila["actualMakerRate"]);
+      if (symbol === undefined || taker === undefined || maker === undefined) continue;
+      pares.push({ symbol, taker, maker });
+    }
+
+    return {
+      vipLevel: texto(datos["vipLevel"]) ?? "desconocido",
+      tradeVol30Day: texto(datos["tradeVol30Day"]) ?? "0",
+      pares,
+    };
   }
 
   /**

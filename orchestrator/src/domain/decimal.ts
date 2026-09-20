@@ -71,3 +71,16 @@ export function decimalToFixed(texto: string, decimales: number): bigint {
     ? units * 10n ** BigInt(decimales - scale)
     : units / 10n ** BigInt(scale - decimales);
 }
+
+/**
+ * Igual que `decimalToFixed`, pero redondeando hacia arriba.
+ *
+ * Sirve para costos: una estimacion de lo que cuesta algo nunca debe quedar por
+ * debajo de lo real, asi que se redondea siempre en contra de quien la lee.
+ */
+export function decimalToFixedUp(texto: string, decimales: number): bigint {
+  const { units, scale } = parseDecimal(texto);
+  if (scale <= decimales) return units * 10n ** BigInt(decimales - scale);
+  const divisor = 10n ** BigInt(scale - decimales);
+  return (units + divisor - 1n) / divisor;
+}

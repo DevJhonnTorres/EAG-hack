@@ -3,6 +3,7 @@ import fc from "fast-check";
 import {
   compareDecimal,
   decimalToFixed,
+  decimalToFixedUp,
   factorBps,
   floorToStep,
   formatDecimal,
@@ -118,5 +119,31 @@ describe("decimalToFixed", () => {
     expect(decimalToFixed("81238.79", 18)).toBe(81_238_790_000_000_000_000_000n);
     expect(decimalToFixed("0.123456789", 4)).toBe(1234n);
     expect(decimalToFixed("2", 0)).toBe(2n);
+  });
+});
+
+describe("decimalToFixedUp", () => {
+  it("redondea hacia arriba lo que no cabe en los decimales pedidos", () => {
+    expect(decimalToFixedUp("0.09851234", 6)).toBe(98_513n);
+    expect(decimalToFixedUp("0.0000001", 6)).toBe(1n);
+  });
+
+  it("no toca lo que ya cabe", () => {
+    expect(decimalToFixedUp("0.0985", 6)).toBe(98_500n);
+    expect(decimalToFixedUp("0.098500", 6)).toBe(98_500n);
+    expect(decimalToFixedUp("2", 6)).toBe(2_000_000n);
+  });
+
+  it("nunca queda por debajo del redondeo hacia abajo, y difiere a lo sumo en una unidad", () => {
+    const decimalArb = fc.bigInt({ min: 0n, max: 10n ** 16n }).map((n) => formatDecimal({ units: n, scale: 10 }));
+    fc.assert(
+      fc.property(decimalArb, (valor) => {
+        const abajo = decimalToFixed(valor, 6);
+        const arriba = decimalToFixedUp(valor, 6);
+        expect(arriba >= abajo).toBe(true);
+        expect(arriba - abajo <= 1n).toBe(true);
+      }),
+      { numRuns: 500 },
+    );
   });
 });

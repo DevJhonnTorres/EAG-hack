@@ -4,6 +4,8 @@
  *
  *   npm run hashkey -- mercado
  *   npm run hashkey -- saldo
+ *   npm run hashkey -- comisiones                  # lo que TU cuenta paga por operacion
+ *   npm run hashkey -- bridge 25                   # costo de pasar 25 USDC de Ethereum a Linea
  *   npm run hashkey -- probar  BTCUSDT SELL 0.001
  *   npm run hashkey -- ordenar BTCUSDT SELL 0.001
  *
@@ -34,7 +36,20 @@ try {
 }
 
 const dist = (ruta) => import(new URL(`orchestrator/dist/${ruta}`, RAIZ).href);
-const { HashKeyPublico, PASOS_RUTA } = await dist("adapters/hashkeyMercado.js");
+const { BridgeLineaError, cotizarBridgeLinea } = await dist("adapters/bridgeLinea.js");
+const { USDC_DECIMALS } = await dist("domain/bridge.js");
+const { decimalToFixedUp, formatDecimal } = await dist("domain/decimal.js");
+const {
+  ACTIVOS_DE_RUTA,
+  HashKeyPublico,
+  HashKeyPublicoError,
+  comisionDeRutaBps,
+  elegirRetiroUsdc,
+  pasosPermitidos,
+  redesDeDeposito,
+  redesDeRetiroUsdc,
+  rutasDeActivos,
+} = await dist("adapters/hashkeyMercado.js");
 const { HashKeyCuenta, HashKeyError, OrdenRechazadaError, decimalPositivo, planificarOrden } =
   await dist("adapters/hashkeyCuenta.js");
 
@@ -71,33 +86,50 @@ function cabecera(titulo) {
 // Comandos
 // --------------------------------------------------------------------
 
+const describirPaso = ({ side, base, quote, symbol }) =>
+  side === "SELL" ? `vender ${base} por ${quote} (${symbol})` : `comprar ${base} con ${quote} (${symbol})`;
+
 async function mercado() {
   cabecera("Mercado de HashKey Exchange");
   const publico = new HashKeyPublico(env);
-  const { reglas, retiroUsdc } = await publico.infoMercado();
+  const { reglas, monedas } = await publico.infoMercado();
+  const rutas = rutasDeActivos(reglas);
 
-  for (const [activo, pasos] of Object.entries(PASOS_RUTA)) {
-    console.log(`Ruta ${activo} -> USDC`);
-    const precios = await publico.precios(pasos.map((p) => p.symbol));
-    for (const { symbol, side } of pasos) {
-      const r = reglas[symbol];
-      const detalle = r
-        ? `min ${r.minQty} ${r.baseAsset}, valor min ${r.minNotional} ${r.quoteAsset}, retail: ${r.retailAllowed ? "si" : "NO"}`
-        : "sin reglas";
-      console.log(`  ${side.padEnd(4)} ${symbol.padEnd(9)} ultimo ${precios[symbol]}   (${detalle})`);
+  // Todo lo que sigue sale de lo que el exchange informa hoy: nada esta escrito a mano.
+  for (const activo of Object.keys(rutas)) {
+    const pasos = rutas[activo];
+    const precios = await publico.precios(pasos.map((paso) => paso.symbol));
+    const depositos = redesDeDeposito(activo, monedas);
+
+    console.log(`${activo} -> USDC   (deposito por: ${depositos.length ? depositos.join(" o ") : "ninguna red habilitada"})`);
+    for (const paso of pasos) {
+      const r = reglas[paso.symbol];
+      const detalle = `min ${r.minQty} ${r.baseAsset}, valor min ${r.minNotional} ${r.quoteAsset}, retail: ${r.retailAllowed ? "si" : "NO"}`;
+      console.log(`  ${describirPaso(paso).padEnd(38)} ultimo ${precios[paso.symbol]}   (${detalle})`);
     }
   }
 
-  console.log(
-    retiroUsdc
-      ? `\nRetiro de USDC por ${retiroUsdc.chain}: minimo ${retiroUsdc.minimo}, comision ${retiroUsdc.comision}. Linea no esta disponible: despues hay que pasar de Ethereum a Linea por un bridge.`
-      : "\nEl exchange no permite hoy retirar USDC por ERC20.",
-  );
+  const sinRuta = ACTIVOS_DE_RUTA.filter((activo) => !rutas[activo]);
+  for (const activo of sinRuta) console.log(`${activo} -> USDC   el exchange no ofrece hoy un camino.`);
 
-  const sinRetail = Object.values(reglas).filter((r) => !r.retailAllowed && Object.values(PASOS_RUTA).flat().some((p) => p.symbol === r.symbol));
+  const retiro = elegirRetiroUsdc(monedas);
+  const redes = redesDeRetiroUsdc(monedas);
+  console.log(`\nRedes por las que el exchange entrega USDC: ${redes.length ? redes.join(", ") : "ninguna"}`);
+  if (!retiro) {
+    console.log("No hay hoy una salida de USDC que lleve a Linea (ni directa ni por Ethereum).");
+  } else if (retiro.esLinea) {
+    console.log(`Retiro directo a Linea: minimo ${retiro.minimo}, comision ${retiro.comision}.`);
+  } else {
+    console.log(
+      `El exchange no retira USDC a Linea. Se usa ${retiro.chain}: minimo ${retiro.minimo}, comision ${retiro.comision}. Despues hay que pasar el USDC a Linea con un bridge.`,
+    );
+  }
+
+  const permitidos = pasosPermitidos(reglas);
+  const sinRetail = [...new Set(permitidos.map((paso) => paso.symbol))].filter((symbol) => !reglas[symbol].retailAllowed);
   if (sinRetail.length > 0) {
     console.log(
-      `\nAviso: ${sinRetail.map((r) => r.symbol).join(", ")} no estan habilitados para cuentas retail. Si tu cuenta no es Professional Investor, el exchange puede rechazar las ordenes. "probar" lo comprueba sin riesgo.`,
+      `\nAviso: ${sinRetail.join(", ")} no estan habilitados para cuentas retail. Si tu cuenta no es Professional Investor, el exchange puede rechazar las ordenes. "probar" lo comprueba sin riesgo.`,
     );
   }
 }
@@ -109,6 +141,40 @@ async function saldo() {
   for (const s of saldos) console.log(`  ${s.asset.padEnd(8)} total ${s.total}   libre ${s.free}   bloqueado ${s.locked}`);
 }
 
+async function comisiones() {
+  cabecera("Comisiones de tu cuenta");
+  const publico = new HashKeyPublico(env);
+  const { reglas } = await publico.infoMercado();
+  const rutas = rutasDeActivos(reglas);
+  const symbols = [...new Set(Object.values(rutas).flat().map((paso) => paso.symbol))];
+
+  const r = await cuenta().comisiones(symbols);
+  console.log(`Nivel VIP ${r.vipLevel}   (volumen de 30 dias: ${r.tradeVol30Day} USD)\n`);
+
+  const tasas = Object.fromEntries(r.pares.map((par) => [par.symbol, par.taker]));
+  for (const [activo, pasos] of Object.entries(rutas)) {
+    const bps = comisionDeRutaBps(pasos, tasas);
+    const detalle = pasos.map((paso) => `${paso.symbol} ${(Number(tasas[paso.symbol]) * 100).toFixed(2)}%`).join(" + ");
+    console.log(`${activo} -> USDC: ${bps} bps (${(bps / 100).toFixed(2)}%)   = ${detalle}`);
+  }
+  console.log(
+    "\nLas ordenes son LIMIT IOC: se ejecutan contra el libro y pagan la tasa de taker. Para que la web use tu tarifa, fija NEXT_PUBLIC_HASHKEY_TAKER_BPS con la tasa por operacion en basis points.",
+  );
+}
+
+async function bridge([monto = "25"]) {
+  console.log(`\nBridge de USDC: Ethereum -> Linea  (cotizacion en vivo de LI.FI)\n`);
+  const usdc = (n) => formatDecimal({ units: n, scale: USDC_DECIMALS });
+  const c = await cotizarBridgeLinea(decimalToFixedUp(monto, USDC_DECIMALS));
+
+  console.log(`Entran:      ${usdc(c.monto)} USDC   (bridge elegido: ${c.herramienta})`);
+  console.log(`Llegan:      ${usdc(c.recibe)} USDC a Linea`);
+  console.log(`Comisiones:  ${usdc(c.comisiones)} USDC   (las descuenta el bridge)`);
+  console.log(`Gas:         ${usdc(c.gas)} USDC   (lo pagas en ETH, en Ethereum, al enviar)`);
+  console.log(`Costo total: ${usdc(c.costoTotal)} USDC${c.segundos !== null ? `   en unos ${c.segundos}s` : ""}`);
+  console.log("\nEl gas cambia con la red: vuelve a correrlo antes de mover fondos.");
+}
+
 /** Lee reglas y libro, y arma la orden validada localmente. */
 async function planear([symbol, side, cantidad]) {
   if (!symbol || !side || !cantidad) fail("uso: <SIMBOLO> <BUY|SELL> <cantidad>");
@@ -117,7 +183,8 @@ async function planear([symbol, side, cantidad]) {
   const publico = new HashKeyPublico(env);
   const { reglas } = await publico.infoMercado();
   const libro = await publico.mejorPrecio(symbol);
-  const plan = planificarOrden({ symbol, side, quantity: cantidad }, reglas[symbol], libro, limites());
+  // Solo se opera lo que forma parte de una ruta a USDC segun los pares que el exchange tiene hoy.
+  const plan = planificarOrden({ symbol, side, quantity: cantidad }, reglas[symbol], libro, limites(), pasosPermitidos(reglas));
 
   console.log(`Orden:   ${plan.side} ${plan.quantity} ${symbol}  (pediste ${cantidad})`);
   console.log(`Tipo:    LIMIT IOC (se ejecuta al instante o se cancela) a ${plan.price}`);
@@ -164,7 +231,7 @@ async function ordenar(args) {
   if (!finales.has(estado.status)) console.log("La orden sigue abierta: revisala en la web del exchange.");
 }
 
-const COMANDOS = { mercado, saldo, probar, ordenar };
+const COMANDOS = { mercado, saldo, comisiones, bridge, probar, ordenar };
 const [comando, ...resto] = process.argv.slice(2);
 
 if (!comando || !(comando in COMANDOS)) {
@@ -175,7 +242,8 @@ if (!comando || !(comando in COMANDOS)) {
 try {
   await COMANDOS[comando](resto);
 } catch (error) {
-  if (error instanceof OrdenRechazadaError || error instanceof HashKeyError || error instanceof RangeError) {
+  const esperado = [OrdenRechazadaError, HashKeyError, HashKeyPublicoError, BridgeLineaError, RangeError];
+  if (esperado.some((tipo) => error instanceof tipo)) {
     fail(error.message);
   }
   throw error;

@@ -6,9 +6,9 @@ import type { Address, Bps, SettlementPayout } from "./types.js";
  *
  * Cada socio cobra su parte del reparto en el coin minado. Este modulo calcula
  * cuanto USDC le queda si lo pasa por el exchange: envia el activo, lo vende
- * por USDC y retira. HashKey Exchange no retira USDC directo a Linea, asi que el
- * retiro sale por Ethereum y el ultimo tramo (Ethereum a Linea) es un bridge
- * aparte, cuyo costo entra aca como parte de `withdrawalFee`.
+ * por USDC y retira. Si el exchange no retira USDC directo a Linea, el retiro sale
+ * por otra red y el ultimo tramo es un bridge aparte, cuyo costo entra aca como
+ * parte de `withdrawalFee`.
  *
  * Aplica la misma regla que el resto del paquete: todo monto es `bigint`. El
  * precio se recibe como punto fijo de 18 decimales y las comisiones como basis
@@ -20,15 +20,17 @@ import type { Address, Bps, SettlementPayout } from "./types.js";
 
 export type BridgeAsset = "HSK" | "BTC";
 
-export const BRIDGE_ASSETS: Record<BridgeAsset, { readonly decimals: number; readonly red: string }> = {
-  HSK: { decimals: 18, red: "HashKey Chain" },
-  BTC: { decimals: 8, red: "Bitcoin" },
+/**
+ * Decimales de la unidad minima de cada activo. Es una propiedad del activo, no
+ * del exchange. Las redes por las que se deposita y la ruta hasta USDC no estan
+ * aca: las informa el exchange.
+ */
+export const BRIDGE_ASSETS: Record<BridgeAsset, { readonly decimals: number }> = {
+  HSK: { decimals: 18 },
+  BTC: { decimals: 8 },
 };
 
 export const USDC_DECIMALS = 6;
-
-/** Donde termina el bridge: el exchange retira por Ethereum y de ahi se pasa a Linea. */
-export const BRIDGE_DESTINO = "Linea (via Ethereum)";
 
 /** Decimales de los montos de un reparto: los del token nativo de la cadena. */
 export const POOL_DECIMALS = 18;

@@ -220,17 +220,32 @@ La tarjeta "Bridge a USDC en Linea" lee del exchange los precios de cada par y e
 costo de retirar USDC (datos publicos, sin credenciales) y cotiza cuanto le queda a
 cada socio. Precio, comisiones y costo del bridge se pueden editar.
 
-La ruta real, segun lo que HashKey lista hoy:
+Todo lo que muestra la tarjeta sale de lo que HashKey informa en ese momento; nada de
+la ruta esta escrito a mano:
 
-```
-BTC -> BTC/USDT -> USDT/USDC -> retiro de USDC por Ethereum -> bridge Ethereum a Linea
-HSK -> HSK/USD  -> USDT/USD (compra) -> USDT/USDC -> retiro por Ethereum -> bridge a Linea
-```
+- **La ruta** se descubre con los pares que el exchange tiene operando, buscando el
+  camino mas corto hasta USDC. Solo pasa por USD, USDT y USDC: nunca por un activo
+  volatil, para que convertir no cambie la exposicion. Si un par deja de operar, la ruta
+  cambia sola, y si ya no hay camino, la tarjeta lo dice.
+- **Las redes de deposito** de cada activo y **las de retiro de USDC** son las que el
+  exchange tiene habilitadas.
+- **La salida de USDC**: si el exchange retira directo a Linea, se usa esa red. Si no, se
+  usa Ethereum (ERC20) y hay que pasar el USDC a Linea con un bridge.
+- **El costo de ese bridge** no lo informa HashKey: se cotiza en vivo con LI.FI (API
+  publica, sin clave) para USDC de Ethereum a Linea, e incluye las comisiones del bridge
+  y el gas de Ethereum. El gas cambia con la red, asi que se lee cada vez. Si la
+  cotizacion falla, el campo queda editable.
+- **Precios, minimos y comisiones de retiro** vienen del mismo exchange.
+- **La comision de venta** es la tasa por operacion por cuantas operaciones recorre la
+  ruta (BTC dos, HSK tres). La tasa depende de tu cuenta y solo se puede leer con tu
+  clave, asi que la pagina publica usa la base de HashKey (0,29%, VIP 0). Para usar la
+  tuya: `npm run hashkey -- comisiones` y fija `NEXT_PUBLIC_HASHKEY_TAKER_BPS` en
+  `web/.env.local` o en las variables de entorno de Vercel. No es un secreto.
 
-- **ETC no se puede**: HashKey Exchange no lo lista. BTC no tiene par contra USDC, asi
-  que pasa por USDT.
-- **HashKey no retira USDC a Linea**: sale por ERC20 (minimo 25 USDC, comision 1) y
-  el ultimo tramo, de Ethereum a Linea, es un bridge aparte. Su costo no se consulta.
+Al momento de escribir esto, HashKey no lista ETC, no tiene BTC/USDC (BTC pasa por USDT) y
+no retira USDC a Linea, asi que la ruta de BTC es `BTC/USDT -> USDT/USDC` y la de HSK,
+`HSK/USD -> USDT/USD (compra) -> USDT/USDC`, con salida por Ethereum. Eso puede cambiar.
+
 - La logica esta en `orchestrator/src/domain/bridge.ts` y `adapters/hashkeyMercado.ts`,
   en `bigint` como el resto del reparto: todo redondeo es hacia abajo y la cotizacion
   conserva el valor (`bruto = comision de venta + comision de retiro + neto`).
@@ -242,6 +257,8 @@ cp .env.example .env         # completar HASHKEY_API_KEY, HASHKEY_API_SECRET y e
 
 npm run hashkey -- mercado                     # precios, reglas y costos (sin clave)
 npm run hashkey -- saldo                       # tus saldos
+npm run hashkey -- comisiones                  # lo que tu cuenta paga por operacion, por ruta
+npm run hashkey -- bridge 25                   # costo en vivo de pasar 25 USDC de Ethereum a Linea
 npm run hashkey -- probar  BTCUSDT SELL 0.001  # valida contra el exchange, no envia nada
 npm run hashkey -- ordenar BTCUSDT SELL 0.001  # orden real: pide escribir CONFIRMAR
 ```
@@ -255,8 +272,8 @@ paquete y la web no puede importarlo.
 
 Salvaguardas:
 
-- Solo se aceptan las operaciones de la ruta (vender BTC, vender HSK, comprar USDT con
-  USD, vender USDT por USDC). No se puede comprar BTC ni operar otro par.
+- Solo se aceptan las operaciones de la ruta a USDC, descubierta con los pares del propio
+  exchange. No se puede comprar BTC ni operar otro par.
 - Las ordenes son `LIMIT IOC` a un precio protegido: nunca peor que el mejor precio del
   libro menos `HASHKEY_MAX_SLIPPAGE_BPS`. Se ejecutan al instante o se cancelan.
 - `HASHKEY_MAX_ORDER_USD` es obligatorio y se mide con el mayor entre el precio limite y
@@ -266,8 +283,7 @@ Salvaguardas:
 - No hay retiros: sacar fondos se hace desde la web de HashKey, a una direccion en whitelist.
 - Crea la clave sin permiso de retiro.
 
-**Cuentas retail:** `exchangeInfo` marca `retailAllowed: false` en los cuatro pares de la
-ruta. Con una cuenta retail el exchange puede rechazar las ordenes; `probar` lo
+**Cuentas retail:** `exchangeInfo` marca `retailAllowed: false` en los pares de la ruta. Con una cuenta retail el exchange puede rechazar las ordenes; `probar` lo
 comprueba sin arriesgar nada.
 
 ## Cadenas

@@ -83,13 +83,26 @@ export const BRIDGE_INICIAL: Record<BridgeAsset, CamposBridge> = {
   BTC: { precio: "80000", comisionRetiro: "0.0001", retiroMinimo: "0.0001", costoBridge: "0" },
 };
 
+/** Un entero de basis points entre 0 y 500, o el valor por defecto si no lo es. */
+function leerBps(texto: string | undefined, porDefecto: number): number {
+  const valor = Number(texto);
+  return texto !== undefined && Number.isInteger(valor) && valor >= 0 && valor <= 500 ? valor : porDefecto;
+}
+
 /**
- * Comision de venta total de la ruta, en basis points (0,40%).
+ * Comision de HashKey Exchange por operacion, en basis points (29 = 0,29%).
  *
- * Es un supuesto: la tarifa real depende del nivel de la cuenta y de cuantos
- * pares recorre la ruta (dos para BTC, tres para HSK). Se ajusta a la tarifa propia.
+ * Es la tarifa base (VIP 0), leida del endpoint `vipInfo` con una cuenta real. Cada
+ * cuenta paga la suya segun su nivel y volumen: se ve con `npm run hashkey --
+ * comisiones`, y se fija aca con la variable NEXT_PUBLIC_HASHKEY_TAKER_BPS. No es un
+ * secreto, y la pagina publica no puede consultarla porque requiere una clave.
+ *
+ * La comision de una ruta es esta tasa por el numero de operaciones que recorre.
  */
-export const COMISION_VENTA_BPS_INICIAL = 40;
+export const TASA_POR_OPERACION_BPS = leerBps(process.env["NEXT_PUBLIC_HASHKEY_TAKER_BPS"], 29);
+
+/** Para cuando no se conoce la ruta y no se sabe cuantas operaciones son. */
+export const COMISION_VENTA_BPS_INICIAL = TASA_POR_OPERACION_BPS;
 
 export const CADENAS = {
   133: {

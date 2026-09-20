@@ -9,7 +9,7 @@ import {
   type LimitesOrden,
   type OrdenPlan,
 } from "../src/adapters/hashkeyCuenta.js";
-import type { ReglasSimbolo } from "../src/adapters/hashkeyMercado.js";
+import type { PasoRuta, ReglasSimbolo } from "../src/adapters/hashkeyMercado.js";
 
 const SECRETO = "secreto-de-prueba-que-no-debe-aparecer-en-ningun-mensaje";
 const CLAVE = "clave-de-prueba";
@@ -39,6 +39,22 @@ const USDTUSD: ReglasSimbolo = {
 };
 
 const LIBRO_BTC = { bid: "81229.52", ask: "81229.53" };
+
+/** Las operaciones de la ruta a USDC, tal como las descubre `descubrirRuta` con los pares reales. */
+const PERMITIDOS: PasoRuta[] = [
+  { symbol: "BTCUSDT", side: "SELL", base: "BTC", quote: "USDT" },
+  { symbol: "USDTUSDC", side: "SELL", base: "USDT", quote: "USDC" },
+  { symbol: "HSKUSD", side: "SELL", base: "HSK", quote: "USD" },
+  { symbol: "USDTUSD", side: "BUY", base: "USDT", quote: "USD" },
+];
+
+const planificar = (
+  entrada: Parameters<typeof planificarOrden>[0],
+  reglas: Parameters<typeof planificarOrden>[1],
+  libro: Parameters<typeof planificarOrden>[2],
+  limites: Parameters<typeof planificarOrden>[3],
+  permitidos: readonly PasoRuta[] = PERMITIDOS,
+) => planificarOrden(entrada, reglas, libro, limites, permitidos);
 const LIMITES: LimitesOrden = { maxOrderUsd: "100", maxSlippageBps: 50 };
 
 describe("firmar", () => {
@@ -57,7 +73,7 @@ describe("firmar", () => {
 
 describe("planificarOrden", () => {
   it("vende redondeando la cantidad al paso y fijando un precio limite protegido", () => {
-    const plan = planificarOrden({ symbol: "BTCUSDT", side: "SELL", quantity: "0.001239" }, BTCUSDT, LIBRO_BTC, LIMITES);
+    const plan = planificar({ symbol: "BTCUSDT", side: "SELL", quantity: "0.001239" }, BTCUSDT, LIBRO_BTC, LIMITES);
     expect(plan).toEqual({
       symbol: "BTCUSDT",
       side: "SELL",
@@ -72,7 +88,7 @@ describe("planificarOrden", () => {
   });
 
   it("al comprar, el precio limite queda por encima del mejor vendedor", () => {
-    const plan = planificarOrden(
+    const plan = planificar(
       { symbol: "USDTUSD", side: "BUY", quantity: "25" },
       USDTUSD,
       { bid: "0.9998", ask: "1.0002" },
@@ -84,7 +100,7 @@ describe("planificarOrden", () => {
   });
 
   it("nunca deja el precio de una venta por debajo del margen permitido", () => {
-    const plan = planificarOrden(
+    const plan = planificar(
       { symbol: "BTCUSDT", side: "SELL", quantity: "0.002" },
       BTCUSDT,
       LIBRO_BTC,
@@ -103,24 +119,28 @@ describe("planificarOrden", () => {
     });
 
     it("una operacion que no es de la ruta", () => {
-      expect(() => planificarOrden(orden({ side: "BUY" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(OrdenRechazadaError);
-      expect(() => planificarOrden(orden({ symbol: "ETHUSD" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
+      expect(() => planificar(orden({ side: "BUY" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(OrdenRechazadaError);
+      expect(() => planificar(orden({ symbol: "ETHUSD" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
         /no forma parte de la ruta/,
       );
     });
 
+    it("sin ninguna ruta permitida no se acepta nada", () => {
+      expect(() => planificar(orden(), BTCUSDT, LIBRO_BTC, LIMITES, [])).toThrow(/no forma parte de la ruta/);
+    });
+
     it("un par sin reglas o que no esta operando", () => {
-      expect(() => planificarOrden(orden(), undefined, LIBRO_BTC, LIMITES)).toThrow(/no informo las reglas/);
-      expect(() => planificarOrden(orden(), { ...BTCUSDT, status: "HALT" }, LIBRO_BTC, LIMITES)).toThrow(
+      expect(() => planificar(orden(), undefined, LIBRO_BTC, LIMITES)).toThrow(/no informo las reglas/);
+      expect(() => planificar(orden(), { ...BTCUSDT, status: "HALT" }, LIBRO_BTC, LIMITES)).toThrow(
         /no esta operando/,
       );
     });
 
     it("una cantidad bajo el minimo, incluso si solo lo esta despues de redondear", () => {
-      expect(() => planificarOrden(orden({ quantity: "0.0001" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
+      expect(() => planificar(orden({ quantity: "0.0001" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
         /bajo el minimo/,
       );
-      expect(() => planificarOrden(orden({ quantity: "0.000299999" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
+      expect(() => planificar(orden({ quantity: "0.000299999" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
         /bajo el minimo/,
       );
     });
@@ -128,12 +148,12 @@ describe("planificarOrden", () => {
     it("un valor bajo el minimo del par", () => {
       // 0.0003 BTC son unos 24 USDT, asi que un minimo de 50 lo deja fuera.
       expect(() =>
-        planificarOrden(orden({ quantity: "0.0003" }), { ...BTCUSDT, minNotional: "50" }, LIBRO_BTC, LIMITES),
+        planificar(orden({ quantity: "0.0003" }), { ...BTCUSDT, minNotional: "50" }, LIBRO_BTC, LIMITES),
       ).toThrow(/bajo el minimo de BTCUSDT/);
     });
 
     it("una orden que supera el tope", () => {
-      expect(() => planificarOrden(orden({ quantity: "0.002" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
+      expect(() => planificar(orden({ quantity: "0.002" }), BTCUSDT, LIBRO_BTC, LIMITES)).toThrow(
         /supera el tope/,
       );
     });
@@ -143,27 +163,27 @@ describe("planificarOrden", () => {
       // Un tope de 99.5 debe rechazarla aunque el valor al limite lo cumpla.
       const orden123 = orden({ quantity: "0.00123" });
       expect(() =>
-        planificarOrden(orden123, BTCUSDT, LIBRO_BTC, { maxOrderUsd: "99.5", maxSlippageBps: 50 }),
+        planificar(orden123, BTCUSDT, LIBRO_BTC, { maxOrderUsd: "99.5", maxSlippageBps: 50 }),
       ).toThrow(/supera el tope/);
-      expect(planificarOrden(orden123, BTCUSDT, LIBRO_BTC, { maxOrderUsd: "100", maxSlippageBps: 50 }).quantity).toBe(
+      expect(planificar(orden123, BTCUSDT, LIBRO_BTC, { maxOrderUsd: "100", maxSlippageBps: 50 }).quantity).toBe(
         "0.00123",
       );
     });
 
     it("limites invalidos", () => {
       for (const maxSlippageBps of [-1, 501, 1.5]) {
-        expect(() => planificarOrden(orden(), BTCUSDT, LIBRO_BTC, { maxOrderUsd: "100", maxSlippageBps })).toThrow(
+        expect(() => planificar(orden(), BTCUSDT, LIBRO_BTC, { maxOrderUsd: "100", maxSlippageBps })).toThrow(
           RangeError,
         );
       }
-      expect(() => planificarOrden(orden(), BTCUSDT, LIBRO_BTC, { maxOrderUsd: "0", maxSlippageBps: 50 })).toThrow(
+      expect(() => planificar(orden(), BTCUSDT, LIBRO_BTC, { maxOrderUsd: "0", maxSlippageBps: 50 })).toThrow(
         RangeError,
       );
     });
 
     it("un precio limite que redondea a cero", () => {
       expect(() =>
-        planificarOrden(orden(), BTCUSDT, { bid: "0.001", ask: "0.002" }, { maxOrderUsd: "100", maxSlippageBps: 50 }),
+        planificar(orden(), BTCUSDT, { bid: "0.001", ask: "0.002" }, { maxOrderUsd: "100", maxSlippageBps: 50 }),
       ).toThrow(/precio limite invalido/);
     });
   });
@@ -397,5 +417,58 @@ describe("respuestas malformadas del exchange (cuenta)", () => {
 
   it("usa el fetch global y el reloj real si no se le indican otros", () => {
     expect(() => new HashKeyCuenta({ env: "sandbox", apiKey: CLAVE, apiSecret: SECRETO })).not.toThrow();
+  });
+});
+
+describe("HashKeyCuenta.comisiones", () => {
+  const respuestaReal = JSON.stringify({
+    vipLevel: "0",
+    tradeVol30Day: "0",
+    data: [
+      { symbol: "BTCUSDT", actualTakerRate: "0.0029", actualMakerRate: "0.0021" },
+      { symbol: "USDTUSDC", actualTakerRate: "0.0029", actualMakerRate: "0.0029" },
+    ],
+  });
+
+  it("lee el nivel VIP y la tasa de cada par", async () => {
+    const { cuenta } = clienteSimulado({ cuerpo: respuestaReal });
+    expect(await cuenta.comisiones(["BTCUSDT", "USDTUSDC"])).toEqual({
+      vipLevel: "0",
+      tradeVol30Day: "0",
+      pares: [
+        { symbol: "BTCUSDT", taker: "0.0029", maker: "0.0021" },
+        { symbol: "USDTUSDC", taker: "0.0029", maker: "0.0029" },
+      ],
+    });
+  });
+
+  it("firma la lista de pares con la coma sin codificar, como la documenta el exchange", async () => {
+    const { cuenta, llamadas } = clienteSimulado({ cuerpo: respuestaReal });
+    await cuenta.comisiones(["BTCUSDT", "USDTUSDC"]);
+
+    const { ruta, firmado, firma } = partirFirma(llamadas[0]!.url);
+    expect(ruta).toBe("https://api-pro.hashkey.com/api/v1/account/vipInfo");
+    expect(firmado).toBe("symbols=BTCUSDT,USDTUSDC&recvWindow=5000&timestamp=1700000000000");
+    expect(firma).toBe(firmar(SECRETO, firmado));
+  });
+
+  it("descarta las filas incompletas y usa valores neutros si faltan los totales", async () => {
+    const { cuenta } = clienteSimulado({
+      cuerpo: JSON.stringify({
+        data: [null, 3, { symbol: "A" }, { symbol: "B", actualTakerRate: "0.1" }, { symbol: "C", actualTakerRate: "0.1", actualMakerRate: "0.05" }],
+      }),
+    });
+    expect(await cuenta.comisiones(["C"])).toEqual({
+      vipLevel: "desconocido",
+      tradeVol30Day: "0",
+      pares: [{ symbol: "C", taker: "0.1", maker: "0.05" }],
+    });
+  });
+
+  it("un cuerpo sin la lista da cero pares", async () => {
+    for (const cuerpo of ["{}", '{"data":"x"}']) {
+      const { cuenta } = clienteSimulado({ cuerpo });
+      expect((await cuenta.comisiones(["BTCUSDT"])).pares).toEqual([]);
+    }
   });
 });
