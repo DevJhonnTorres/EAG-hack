@@ -20,7 +20,8 @@
     "coverage:sol": "npm run foundry && forge coverage --root contracts --report summary --no-match-path \"test/PoolSplitter.invariant.t.sol\"",
     "fixtures:safe": "npm run foundry && forge test --root contracts --match-contract SafeTxHashFixture",
     "fixtures:x402": "npm run foundry && forge test --root contracts --match-contract Erc3009Fixture",
-    "hashkey": "npm run build --workspace @hashpool/orchestrator --silent && node tools/hashkey.mjs"
+    "hashkey": "npm run build --workspace @hashpool/orchestrator --silent && node tools/hashkey.mjs",
+    "liquidar": "npm run build --workspace @hashpool/orchestrator --silent && node tools/liquidar.mjs"
   },
   "devDependencies": {
     "@foundry-rs/anvil": "1.7.1",
