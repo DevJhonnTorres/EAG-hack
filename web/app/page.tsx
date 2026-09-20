@@ -22,6 +22,7 @@ import {
 } from "@/lib/defaults";
 import { acortarDireccion, formatUnidades, formatearDuracion, parseUnidades, porcentaje } from "@/lib/format";
 import { buildSafeTransaction } from "@/lib/calldata";
+import { Historial } from "@/components/Historial";
 
 const builder = new SettlementBuilder();
 const CADENA = CADENAS[133];
@@ -186,6 +187,11 @@ export default function Page() {
             telemetryHash={telemetryHash}
             splitterAddress={splitterAddress}
             setSplitterAddress={setSplitterAddress}
+          />
+          <Historial
+            explorerUrl={CADENA.explorer}
+            splitterAddress={splitterAddress}
+            moneda={CADENA.moneda}
           />
         </div>
       </div>

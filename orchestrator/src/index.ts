@@ -7,3 +7,4 @@ export * from "./domain/settlement.js";
 export * from "./domain/telemetryHash.js";
 export * from "./adapters/mockTelemetry.js";
 export * from "./adapters/safe.js";
+export * from "./adapters/blockscout.js";
