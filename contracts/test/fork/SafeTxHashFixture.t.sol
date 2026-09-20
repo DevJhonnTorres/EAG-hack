@@ -43,8 +43,9 @@ contract SafeTxHashFixtureTest is Test {
         owners[0] = OWNER_A;
         owners[1] = OWNER_B;
 
-        bytes memory initializer =
-            abi.encodeCall(ISafe.setup, (owners, 2, address(0), "", address(0), address(0), 0, payable(address(0))));
+        bytes memory initializer = abi.encodeCall(
+            ISafe.setup, (owners, 2, address(0), "", address(0), address(0), 0, payable(address(0)))
+        );
 
         // Salt fijo: el Safe queda en una direccion determinista, asi que el fixture es
         // reproducible por cualquiera que corra este test.
@@ -53,7 +54,8 @@ contract SafeTxHashFixtureTest is Test {
         address[] memory partners = new address[](2);
         partners[0] = PARTNER_A;
         partners[1] = PARTNER_B;
-        PoolRegistry registry = new PoolRegistry(address(safe), ENERGY_WALLET, MAINTENANCE_VAULT, 500, partners);
+        PoolRegistry registry =
+            new PoolRegistry(address(safe), ENERGY_WALLET, MAINTENANCE_VAULT, 500, partners);
         PoolSplitter splitter = new PoolSplitter(registry);
 
         PoolSplitter.Payout[] memory payouts = new PoolSplitter.Payout[](4);

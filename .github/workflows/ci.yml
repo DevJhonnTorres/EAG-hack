@@ -20,13 +20,13 @@ jobs:
       # cualquier integrante del equipo en su maquina.
       - run: npm ci
       - name: Formato
-        run: npx forge fmt --root contracts --check
+        run: npm run fmt:sol -- --check
       - name: Compilacion
-        run: npx forge build --root contracts
+        run: npm run build:sol
       - name: Tests, fuzzing y invariantes
-        run: FOUNDRY_PROFILE=ci npx forge test --root contracts -vv
+        run: FOUNDRY_PROFILE=ci npm run test:sol
       - name: Cobertura
-        run: npx forge coverage --root contracts --report summary --no-match-path 'test/PoolSplitter.invariant.t.sol'
+        run: npm run coverage:sol
 
   orquestador:
     name: Motor de calculo (TypeScript)
