@@ -15,4 +15,5 @@ export * from "./adapters/x402.js";
 // no se exporta: la interfaz web esta desplegada publicamente y no debe poder alcanzarla.
 export * from "./adapters/hashkeyMercado.js";
 export * from "./adapters/bridgeLinea.js";
+export * from "./adapters/simulacionRuta.js";
 export * from "./adapters/cadena.js";

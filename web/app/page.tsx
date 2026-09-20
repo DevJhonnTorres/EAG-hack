@@ -163,16 +163,14 @@ export default function Page() {
       <header className="principal">
         <h1>HashPool</h1>
         <p>
-          Micro-pools de infraestructura. El reparto de lo minado se calcula por el trabajo que cada equipo
-          realmente hizo, lo aprueban los socios con su multisig, y la cadena verifica que las cuentas
-          cierren antes de mover un solo wei.
+          Infrastructure micro-pools. Mining rewards are split by the work each rig actually did, approved by the partners with their multisig, and the chain checks that the books balance before a single wei moves.
         </p>
         <div className="barra-cadena">
           <span className="chip">
-            Cadena <strong>{CADENA.nombre}</strong>
+            Chain <strong>{CADENA.nombre}</strong>
           </span>
           <span className="chip">
-            Moneda <strong>{CADENA.moneda}</strong>
+            Currency <strong>{CADENA.moneda}</strong>
           </span>
           <span className="chip">
             Explorer{" "}
@@ -181,10 +179,10 @@ export default function Page() {
             </a>
           </span>
           <span className="chip">
-            Periodo <strong>#{epochId}</strong>
+            Period <strong>#{epochId}</strong>
           </span>
           <span className="chip">
-            Baul{" "}
+            Treasury{" "}
             <a href={`${CADENA.explorer}/address/${CONTRATOS.baul}`} target="_blank" rel="noreferrer">
               {acortarDireccion(CONTRATOS.baul)}
             </a>
@@ -247,9 +245,7 @@ export default function Page() {
       </div>
 
       <footer className="pie">
-        Los datos de hardware y telemetria de esta pantalla son simulados y se editan desde aca. El calculo
-        del reparto, el hash de auditoria y la transaccion que se firma son los reales: la interfaz ejecuta
-        exactamente el mismo motor que cubren los tests y que aprueba el contrato.
+        The hardware and telemetry data on this screen are simulated and editable here. The payout calculation, the audit hash and the transaction that gets signed are real: the interface runs exactly the same engine that the tests cover and the contract enforces.
       </footer>
     </div>
   );
@@ -266,14 +262,14 @@ function ConfiguracionEconomica({
 
   return (
     <section className="tarjeta">
-      <h2>Configuracion economica</h2>
+      <h2>Economic settings</h2>
       <p className="subtitulo">
-        Los parametros que definen el negocio. Cambiarlos recalcula el reparto al instante.
+        The parameters that define the business. Changing them recalculates the payout instantly.
       </p>
 
       <div className="campos">
         <div>
-          <label htmlFor="tarifa">Tarifa electrica ({CADENA.moneda} por kWh)</label>
+          <label htmlFor="tarifa">Electricity rate ({CADENA.moneda} per kWh)</label>
           <input
             id="tarifa"
             className="mono"
@@ -293,7 +289,7 @@ function ConfiguracionEconomica({
         </div>
 
         <div>
-          <label htmlFor="mantenimiento">Fondo de mantenimiento ({config.maintenanceBps / 100}%)</label>
+          <label htmlFor="mantenimiento">Maintenance fund ({config.maintenanceBps / 100}%)</label>
           <input
             id="mantenimiento"
             type="range"
@@ -308,7 +304,7 @@ function ConfiguracionEconomica({
         </div>
 
         <div className="campo-ancho">
-          <label htmlFor="energia">Wallet administrativa que paga la luz</label>
+          <label htmlFor="energia">Admin wallet that pays the power bill</label>
           <input
             id="energia"
             className="mono"
@@ -319,7 +315,7 @@ function ConfiguracionEconomica({
         </div>
 
         <div className="campo-ancho">
-          <label htmlFor="vault">Vault del fondo de mantenimiento</label>
+          <label htmlFor="vault">Maintenance fund vault</label>
           <input
             id="vault"
             className="mono"
@@ -333,8 +329,7 @@ function ConfiguracionEconomica({
       </div>
 
       <p className="subtitulo" style={{ margin: 0 }}>
-        El tope del fondo es 50%: el contrato rechaza cualquier configuracion por encima, para que una
-        reserva mal puesta no pueda dejar a los socios sin nada de forma &quot;valida&quot;.
+        The fund cap is 50%: the contract rejects any setting above it, so a misconfigured reserve can never leave the partners with nothing in a &quot;valid&quot; way.
       </p>
     </section>
   );
@@ -362,8 +357,8 @@ function Equipos({
 
   return (
     <section className="tarjeta">
-      <h2>Equipos del pool</h2>
-      <p className="subtitulo">Que aporta cada socio. Es lo que determina su peso y su consumo.</p>
+      <h2>Pool rigs</h2>
+      <p className="subtitulo">What each partner contributes. It determines their weight and their power use.</p>
 
       {config.rigs.map((rig, rigIndex) => {
         const vatios = rig.gpus.reduce((acc, gpu) => acc + gpu.tdpWatts, 0) + rig.baseloadWatts;
@@ -378,14 +373,14 @@ function Equipos({
               </span>
               {config.rigs.length > 1 && (
                 <button className="peligro" onClick={() => quitarEquipo(rigIndex)}>
-                  Quitar
+                  Remove
                 </button>
               )}
             </div>
 
             <div className="campos">
               <div className="campo-ancho">
-                <label htmlFor={`socio-${rig.id}`}>Wallet del socio</label>
+                <label htmlFor={`socio-${rig.id}`}>Partner wallet</label>
                 <input
                   id={`socio-${rig.id}`}
                   className="mono"
@@ -396,7 +391,7 @@ function Equipos({
               </div>
 
               <div>
-                <label htmlFor={`baseload-${rig.id}`}>Placa base y perifericos (W)</label>
+                <label htmlFor={`baseload-${rig.id}`}>Motherboard &amp; peripherals (W)</label>
                 <input
                   id={`baseload-${rig.id}`}
                   type="number"
@@ -409,7 +404,7 @@ function Equipos({
               </div>
 
               <div>
-                <label htmlFor={`psu-${rig.id}`}>Eficiencia de la fuente (%)</label>
+                <label htmlFor={`psu-${rig.id}`}>PSU efficiency (%)</label>
                 <input
                   id={`psu-${rig.id}`}
                   type="number"
@@ -425,7 +420,7 @@ function Equipos({
               </div>
             </div>
 
-            <label>Tarjetas</label>
+            <label>GPUs</label>
             {rig.gpus.map((gpu, gpuIndex) => (
               <div className="gpu-fila" key={`${rig.id}-${gpuIndex}`}>
                 <select value={gpu.model} onChange={(evento) => cambiarGpu(rigIndex, gpuIndex, evento.target.value)}>
@@ -446,14 +441,14 @@ function Equipos({
               </div>
             ))}
             <button onClick={() => actualizarRig(rigIndex, { gpus: [...rig.gpus, rig.gpus[0] ?? GPU_CATALOG[0]] })}>
-              Agregar tarjeta
+              Add GPU
             </button>
           </div>
         );
       })}
 
       <button className="primario" onClick={agregarEquipo}>
-        Agregar equipo
+        Add rig
       </button>
     </section>
   );
@@ -503,14 +498,14 @@ function Telemetria({
 
   return (
     <section className="tarjeta">
-      <h2>Telemetria del periodo</h2>
+      <h2>Period telemetry</h2>
       <p className="subtitulo">
-        Datos simulados, editables desde aca. En produccion los aportaria la API del software de mineria.
+        Simulated data, editable here. In production it would come from the mining software's API.
       </p>
 
       <div className="campos tres">
         <div>
-          <label htmlFor="epoch">Periodo</label>
+          <label htmlFor="epoch">Period</label>
           <input
             id="epoch"
             type="number"
@@ -520,7 +515,7 @@ function Telemetria({
           />
         </div>
         <div>
-          <label htmlFor="bruto">Bruto minado ({CADENA.moneda})</label>
+          <label htmlFor="bruto">Gross mined ({CADENA.moneda})</label>
           <input
             id="bruto"
             className="mono"
@@ -537,7 +532,7 @@ function Telemetria({
           />
         </div>
         <div>
-          <label htmlFor="deuda">Deuda de luz arrastrada</label>
+          <label htmlFor="deuda">Carried power debt</label>
           <input
             id="deuda"
             className="mono"
@@ -563,10 +558,10 @@ function Telemetria({
           <div className="slider-fila" key={rig.id}>
             <div className="slider-encabezado">
               <span>
-                <strong>{rig.id}</strong> encendido
+                <strong>{rig.id}</strong> powered on
               </span>
               <span className="valor">
-                {formatearDuracion(estado.uptimeSeconds)} de 7d ({((dias / 7) * 100).toFixed(0)}%)
+                {formatearDuracion(estado.uptimeSeconds)} of 7d ({((dias / 7) * 100).toFixed(0)}%)
               </span>
             </div>
             <input
@@ -579,7 +574,7 @@ function Telemetria({
             />
 
             <div className="slider-encabezado" style={{ marginTop: 6 }}>
-              <span>rendimiento respecto del nominal</span>
+              <span>performance vs. nominal</span>
               <span className="valor">{estado.rendimiento}%</span>
             </div>
             <input
@@ -596,13 +591,12 @@ function Telemetria({
 
       {saldoBaul !== null && saldoBaul > 0n && (
         <button onClick={ajustarAlSaldoDelBaul} style={{ marginBottom: 14 }}>
-          Ajustar al saldo del baul ({formatUnidades(saldoBaul)} {CADENA.moneda})
+          Match the vault balance ({formatUnidades(saldoBaul)} {CADENA.moneda})
         </button>
       )}
 
       <p className="subtitulo" style={{ margin: 0 }}>
-        Bajar el encendido de un equipo es el caso que rompe cualquier planilla: ese socio aporta menos, pero
-        tampoco paga la luz que no consumio.
+        Turning a rig off is the case that breaks any spreadsheet: that partner contributes less, but also doesn't pay for the power they didn't use.
       </p>
     </section>
   );
@@ -618,8 +612,8 @@ function Reparto({
   if (resultado.error || !resultado.settlement) {
     return (
       <section className="tarjeta">
-        <h2>Reparto del periodo</h2>
-        <div className="aviso error">No se pudo calcular el reparto: {resultado.error}</div>
+        <h2>Period payout</h2>
+        <div className="aviso error">Could not calculate the payout: {resultado.error}</div>
       </section>
     );
   }
@@ -635,8 +629,8 @@ function Reparto({
 
   return (
     <section className="tarjeta">
-      <h2>Reparto del periodo</h2>
-      <p className="subtitulo">Como se divide el bruto, en el orden en que se sirven los compromisos.</p>
+      <h2>Period payout</h2>
+      <p className="subtitulo">How the gross is split, in the order the obligations are served.</p>
 
       <div className="cascada">
         <span style={{ width: anchoDe(settlement.energyPaid), background: "var(--energia)" }} />
@@ -645,7 +639,7 @@ function Reparto({
       </div>
 
       <div className="resumen-fila">
-        <span className="etiqueta">Bruto minado</span>
+        <span className="etiqueta">Gross mined</span>
         <span className="monto">
           {formatUnidades(settlement.gross)} {CADENA.moneda}
         </span>
@@ -653,7 +647,7 @@ function Reparto({
       <div className="resumen-fila">
         <span className="etiqueta">
           <span className="punto energia" />
-          Energia pagada
+          Power paid
         </span>
         <span className="monto">
           {formatUnidades(settlement.energyPaid)} ({porcentaje(settlement.energyPaid, settlement.gross)}%)
@@ -662,7 +656,7 @@ function Reparto({
       <div className="resumen-fila">
         <span className="etiqueta">
           <span className="punto mantenimiento" />
-          Fondo de mantenimiento
+          Maintenance fund
         </span>
         <span className="monto">
           {formatUnidades(settlement.maintenance)} ({porcentaje(settlement.maintenance, settlement.gross)}%)
@@ -671,7 +665,7 @@ function Reparto({
       <div className="resumen-fila">
         <span className="etiqueta">
           <span className="punto socio" />
-          Para los socios
+          For the partners
         </span>
         <span className="monto">
           {formatUnidades(sociosTotal)} ({porcentaje(sociosTotal, settlement.gross)}%)
@@ -680,20 +674,20 @@ function Reparto({
 
       {settlement.energyDebtCarried > 0n && (
         <div className="aviso alerta" style={{ marginTop: 14 }}>
-          El periodo no alcanzo a cubrir la factura de luz. Quedan{" "}
+          The period did not cover the power bill. There remain{" "}
           <strong>
             {formatUnidades(settlement.energyDebtCarried)} {CADENA.moneda}
           </strong>{" "}
-          de deuda que se cobran del periodo siguiente. Los socios cobran despues de la luz, no antes.
+          of debt, collected from the next period. Partners get paid after the power bill, not before.
         </div>
       )}
 
       <table style={{ marginTop: 16 }}>
         <thead>
           <tr>
-            <th>Socio</th>
-            <th>Aporte</th>
-            <th style={{ textAlign: "right" }}>Le corresponde</th>
+            <th>Partner</th>
+            <th>Contribution</th>
+            <th style={{ textAlign: "right" }}>Owed</th>
           </tr>
         </thead>
         <tbody>
@@ -718,20 +712,18 @@ function Reparto({
       <div className={`aviso ${cuadra ? "ok" : "error"}`} style={{ marginTop: 16, marginBottom: 0 }}>
         {cuadra ? (
           <>
-            Las cuentas cierran al wei: las {settlement.payouts.length} lineas suman exactamente el bruto. Es
-            la invariante que el contrato vuelve a verificar on-chain antes de pagar.
+            The books balance to the wei: the {settlement.payouts.length} lines add up exactly to the gross. It is the invariant the contract checks again on-chain before paying.
           </>
         ) : (
           <>
-            El reparto no conserva el valor ({suma.toString()} contra {settlement.gross.toString()}). La cadena
-            rechazaria esta liquidacion.
+            The payout does not conserve value ({suma.toString()} vs {settlement.gross.toString()}). The chain would reject this settlement.
           </>
         )}
       </div>
 
       {resultado.publicable && (
         <div className="aviso alerta" style={{ marginTop: 12, marginBottom: 0 }}>
-          No se puede publicar todavia: {resultado.publicable}
+          Cannot be published yet: {resultado.publicable}
         </div>
       )}
     </section>
@@ -760,14 +752,13 @@ function TransaccionAFirmar({
 
   return (
     <section className="tarjeta">
-      <h2>Transaccion a firmar</h2>
+      <h2>Transaction to sign</h2>
       <p className="subtitulo">
-        Lo que los socios aprueban con el multisig. No es un resumen del reparto: son los bytes exactos que
-        se ejecutan en la cadena.
+        What the partners approve with the multisig. It is not a summary of the payout: these are the exact bytes executed on-chain.
       </p>
 
       <div style={{ marginBottom: 14 }}>
-        <label htmlFor="splitter">Direccion del PoolSplitter</label>
+        <label htmlFor="splitter">PoolSplitter address</label>
         <input
           id="splitter"
           className="mono"
@@ -777,23 +768,22 @@ function TransaccionAFirmar({
         />
       </div>
 
-      <label>Hash de la telemetria (queda anclado on-chain)</label>
+      <label>Telemetry hash (anchored on-chain)</label>
       <div className="codigo" style={{ marginBottom: 14 }}>
         {telemetryHash}
       </div>
       <p className="subtitulo">
-        Con este hash cualquier socio toma el JSON crudo del periodo, recalcula el reparto y comprueba que le
-        pagaron lo que le correspondia. Nadie tiene que confiar en el servidor que hizo la cuenta.
+        With this hash any partner takes the period's raw JSON, recomputes the payout and checks they were paid what they were owed. Nobody has to trust the server that did the math.
       </p>
 
       {transaccion ? (
         <>
-          <label>Calldata de settle()</label>
+          <label>settle() calldata</label>
           <div className="codigo">{transaccion.data}</div>
         </>
       ) : (
         <div className="aviso alerta" style={{ marginBottom: 0 }}>
-          Completa una direccion valida del PoolSplitter para generar la transaccion.
+          Enter a valid PoolSplitter address to generate the transaction.
         </div>
       )}
     </section>

@@ -268,7 +268,7 @@ describe("verificarPago (lado del vendedor)", () => {
     };
     const resultado = verificarPago(desviado, requisito, { ahora });
     expect(resultado.valido).toBe(false);
-    expect(resultado.motivo).toMatch(/deberia ir a/);
+    expect(resultado.motivo).toMatch(/should go to/);
   });
 
   /** El otro ataque obvio: firmar bien, pero por un wei. */
@@ -276,7 +276,7 @@ describe("verificarPago (lado del vendedor)", () => {
     const pago = await construirPago(wallet, { ...requisito, maxAmountRequired: "1" }, { ahora });
     const resultado = verificarPago(pago, requisito, { ahora });
     expect(resultado.valido).toBe(false);
-    expect(resultado.motivo).toMatch(/el precio es/);
+    expect(resultado.motivo).toMatch(/the price is/);
   });
 
   it("acepta un pago por encima del precio", async () => {
@@ -295,7 +295,7 @@ describe("verificarPago (lado del vendedor)", () => {
     };
     const resultado = verificarPago(adulterado, requisito, { ahora });
     expect(resultado.valido).toBe(false);
-    expect(resultado.motivo).toMatch(/recupera a/);
+    expect(resultado.motivo).toMatch(/recovers to/);
   });
 
   /**
@@ -307,7 +307,7 @@ describe("verificarPago (lado del vendedor)", () => {
     const despues = () => (Number(pago.payload.authorization.validBefore) + 1) * 1000;
     const resultado = verificarPago(pago, requisito, { ahora: despues });
     expect(resultado.valido).toBe(false);
-    expect(resultado.motivo).toMatch(/vencio/);
+    expect(resultado.motivo).toMatch(/expired/);
   });
 
   it("rechaza una autorizacion que todavia no empezo a valer", async () => {
@@ -315,14 +315,14 @@ describe("verificarPago (lado del vendedor)", () => {
     const antes = () => (Number(pago.payload.authorization.validAfter) - 10) * 1000;
     const resultado = verificarPago(pago, requisito, { ahora: antes });
     expect(resultado.valido).toBe(false);
-    expect(resultado.motivo).toMatch(/todavia no/);
+    expect(resultado.motivo).toMatch(/not valid yet/);
   });
 
   it("rechaza un pago en otra red aunque la firma sea valida", async () => {
     const pago = await pagoValido();
     const resultado = verificarPago({ ...pago, network: "eip155:1" }, requisito, { ahora });
     expect(resultado.valido).toBe(false);
-    expect(resultado.motivo).toMatch(/red /);
+    expect(resultado.motivo).toMatch(/network /);
   });
 
   it("rechaza una firma con formato invalido sin lanzar excepcion", async () => {

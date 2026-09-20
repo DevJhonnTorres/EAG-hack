@@ -121,7 +121,7 @@ export class SettlementBuilder {
     const total = sum(settlement.payouts.map((payout) => payout.amount));
     if (total !== settlement.gross) {
       throw new UnpublishableSettlementError(
-        `el reparto no conserva el valor: las lineas suman ${total} y el bruto es ${settlement.gross}`,
+        `the payout does not conserve value: the lines add up to ${total} and the gross is ${settlement.gross}`,
       );
     }
   }
@@ -135,17 +135,17 @@ export class SettlementBuilder {
 export function assertPublishable(settlement: Settlement, config: PoolConfig): void {
   if (settlement.gross <= 0n) {
     throw new UnpublishableSettlementError(
-      `el periodo ${settlement.epochId} no tiene ganancias que repartir`,
+      `period ${settlement.epochId} has no earnings to distribute`,
     );
   }
   if (settlement.payouts.length < 3) {
     throw new UnpublishableSettlementError(
-      `el reparto necesita al menos energia, mantenimiento y un socio (tiene ${settlement.payouts.length} lineas)`,
+      `the payout needs at least a power line, a maintenance line and a partner (it has ${settlement.payouts.length} lines)`,
     );
   }
   if (settlement.payouts.length > 18) {
     throw new UnpublishableSettlementError(
-      `el reparto excede el maximo de 18 lineas por liquidacion (tiene ${settlement.payouts.length})`,
+      `the payout exceeds the maximum of 18 lines per settlement (it has ${settlement.payouts.length})`,
     );
   }
 
@@ -153,7 +153,7 @@ export function assertPublishable(settlement: Settlement, config: PoolConfig): v
   for (const payout of settlement.payouts) {
     const key = payout.to.toLowerCase();
     if (seen.has(key)) {
-      throw new UnpublishableSettlementError(`la direccion ${payout.to} aparece dos veces en el reparto`);
+      throw new UnpublishableSettlementError(`address ${payout.to} appears twice in the payout`);
     }
     seen.add(key);
   }
@@ -161,7 +161,7 @@ export function assertPublishable(settlement: Settlement, config: PoolConfig): v
   const floor = (settlement.gross * BigInt(config.maintenanceBps)) / 10_000n;
   if (settlement.maintenance < floor) {
     throw new UnpublishableSettlementError(
-      `la reserva de mantenimiento (${settlement.maintenance}) no alcanza el piso exigido por el contrato (${floor})`,
+      `the maintenance reserve (${settlement.maintenance}) is below the floor the contract requires (${floor})`,
     );
   }
 }

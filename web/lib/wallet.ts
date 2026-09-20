@@ -26,7 +26,7 @@ declare global {
 
 export class SinWalletError extends Error {
   constructor() {
-    super("no se detecto ninguna wallet en el navegador");
+    super("no wallet detected in the browser");
     this.name = "SinWalletError";
   }
 }
@@ -48,7 +48,7 @@ export async function conectar(cadena: DatosCadena): Promise<{ provider: Browser
   const provider = nuevoProvider();
   const cuentas = (await provider.send("eth_requestAccounts", [])) as string[];
   const cuenta = cuentas[0];
-  if (!cuenta) throw new Error("la wallet no devolvio ninguna cuenta");
+  if (!cuenta) throw new Error("the wallet returned no accounts");
 
   await asegurarCadenaEnProveedor(provider, cadena);
 

@@ -13,7 +13,7 @@ export const BPS_DENOMINATOR = 10_000n;
 
 export class NegativeAmountError extends Error {
   constructor(name: string, value: bigint) {
-    super(`${name} no puede ser negativo: ${value}`);
+    super(`${name} cannot be negative: ${value}`);
     this.name = "NegativeAmountError";
   }
 }
@@ -26,7 +26,7 @@ export function assertNonNegative(name: string, value: bigint): void {
 export function applyBps(amount: Wei, bps: number): Wei {
   assertNonNegative("amount", amount);
   if (!Number.isInteger(bps) || bps < 0 || bps > Number(BPS_DENOMINATOR)) {
-    throw new RangeError(`bps fuera de rango: ${bps}`);
+    throw new RangeError(`bps out of range: ${bps}`);
   }
   return (amount * BigInt(bps)) / BPS_DENOMINATOR;
 }
@@ -61,7 +61,7 @@ export function min(a: bigint, b: bigint): bigint {
 export function splitByWeight(total: Wei, weights: readonly bigint[]): Wei[] {
   assertNonNegative("total", total);
   if (weights.length === 0) {
-    if (total > 0n) throw new RangeError("no hay participantes para repartir un total positivo");
+    if (total > 0n) throw new RangeError("there are no participants to split a positive total among");
     return [];
   }
   for (const weight of weights) assertNonNegative("weight", weight);

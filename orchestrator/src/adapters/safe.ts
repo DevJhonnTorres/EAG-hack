@@ -101,14 +101,14 @@ export interface OwnerSignature {
 
 export class DuplicateSignerError extends Error {
   constructor(signer: string) {
-    super(`el dueno ${signer} firmo dos veces`);
+    super(`owner ${signer} signed twice`);
     this.name = "DuplicateSignerError";
   }
 }
 
 export class InsufficientSignaturesError extends Error {
   constructor(recolectadas: number, umbral: number) {
-    super(`el Safe exige ${umbral} firmas y se recolectaron ${recolectadas}`);
+    super(`the Safe requires ${umbral} signatures and ${recolectadas} were collected`);
     this.name = "InsufficientSignaturesError";
   }
 }

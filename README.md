@@ -1,307 +1,329 @@
 # HashPool
 
-**Micro-pools de infraestructura: reparto de ganancias de minería auditable, verificado on-chain.**
+**Infrastructure micro-pools: auditable mining-reward splitting, verified on-chain.**
 
-🔗 **[Demo en vivo](https://hashpool-jhonns-projects-665cb796.vercel.app)** · [Contratos en Blockscout](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7)
+🔗 **[Live demo](https://hashpool-jhonns-projects-665cb796.vercel.app)** · [Contracts on Blockscout](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7)
 
-Dos personas ponen hardware para minar juntas. A fin de mes alguien arma un Excel,
-y empieza la discusión: quién gastó más luz, cuánto aportó cada uno, qué pasa si el
-equipo de uno estuvo apagado dos días. HashPool convierte esa conversación en
-aritmética verificable.
+Two people put hardware together to mine. At the end of the month someone builds a
+spreadsheet, and the argument starts: who spent more on power, how much each one
+contributed, what happens if one rig was off for two days. HashPool turns that
+conversation into verifiable arithmetic.
 
-## Cómo funciona
+## How it works
 
-El protocolo separa tres responsabilidades que normalmente se mezclan:
+The protocol separates three responsibilities that usually get mixed together:
 
-| Capa | Rol | Por qué |
+| Layer | Role | Why |
 |---|---|---|
-| **Middleware** (TypeScript) | **Calcula** el reparto | Barato de cambiar y fácil de testear, pero no es confiable |
-| **Gnosis Safe** | **Aprueba** con firmas | La autoridad humana y la única custodia de los fondos |
-| **PoolSplitter** (Solidity) | **Verifica** antes de pagar | No confía en el número que recibe: exige que las cuentas cierren al wei |
+| **Middleware** (TypeScript) | **Computes** the split | Cheap to change and easy to test, but not trusted |
+| **Gnosis Safe** | **Approves** with signatures | The human authority and the only custody of the funds |
+| **PoolSplitter** (Solidity) | **Verifies** before paying | Does not trust the number it receives: it requires the books to balance to the wei |
 
-El contrato **no es una bóveda**. Recibe el valor en la misma transacción que lo
-distribuye y termina con saldo cero. Los fondos viven en el Safe.
+The contract **is not a vault**. It receives the value in the same transaction that
+distributes it and ends with a zero balance. The funds live in the Safe.
 
-### Lo que el contrato exige antes de mover un wei
+### What the contract requires before moving a single wei
 
-1. Las líneas del reparto suman **exactamente** el bruto enviado.
-2. El período avanza de forma estrictamente creciente (no hay doble pago).
-3. Cada destinatario está en el `PoolRegistry` y con el rol que declara.
-4. Ningún destinatario aparece dos veces.
-5. Hay exactamente un pago de energía y uno de mantenimiento.
-6. El fondo de mantenimiento alcanza su piso configurado.
-7. Viene el hash de la telemetría que sustenta el cálculo.
+1. The payout lines add up to **exactly** the gross sent.
+2. The period increases strictly (no double payment).
+3. Every recipient is in the `PoolRegistry` with the role it declares.
+4. No recipient appears twice.
+5. There is exactly one power payment and one maintenance payment.
+6. The maintenance fund reaches its configured floor.
+7. The hash of the telemetry that backs the calculation is included.
 
-Si algo de eso falla, la liquidación se revierte entera.
+If any of that fails, the whole settlement reverts.
 
-### El radio de daño de un middleware comprometido
+### The blast radius of a compromised middleware
 
-Un atacante con control total del servidor que calcula **no puede desviar un wei a
-una dirección propia**. El `PoolRegistry` es una allowlist gobernada solo por el Safe,
-que es inmutable. Lo máximo que puede hacer es proponer otro reparto entre los
-destinatarios legítimos — y eso todavía tiene que pasar por las firmas de los socios.
+An attacker with full control of the server that computes **cannot divert a single wei
+to an address of their own**. The `PoolRegistry` is an allowlist governed only by the
+Safe, which is immutable. The most they can do is propose a different split among the
+legitimate recipients — and that still has to go through the partners' signatures.
 
-### El caso que motiva el proyecto
+### The case that motivates the project
 
-El reparto pondera **hashrate efectivo integrado sobre el tiempo encendido**, no el
-hardware declarado. Un socio con el equipo apagado dos días aporta menos, y tampoco
-paga la luz que no consumió:
+The split weighs **effective hashrate integrated over uptime**, not the declared
+hardware. A partner whose rig was off for two days contributes less, and does not pay
+for the power they did not use either:
 
-| Escenario | Socio A (2 GPUs) | Socio B (1 GPU) | Factura de luz |
+| Scenario | Partner A (2 GPUs) | Partner B (1 GPU) | Power bill |
 |---|---|---|---|
-| Ambos al 100% | 66,66% | 33,33% | 22,96% |
-| rig-b apagado 2 días | **73,68%** | **26,31%** | **20,56%** |
+| Both at 100% | 66.66% | 33.33% | 22.96% |
+| rig-b off for 2 days | **73.68%** | **26.31%** | **20.56%** |
 
-### Auditoría
+### Auditing
 
-Cada liquidación ancla on-chain el hash de la telemetría cruda del período.
-Cualquier socio toma ese JSON, recalcula el reparto y verifica que le pagaron lo que
-le correspondía — sin confiar en el servidor que hizo la cuenta ni en la palabra de
-quien ejecutó.
+Every settlement anchors the hash of the period's raw telemetry on-chain. Any partner
+takes that JSON, recomputes the split and checks they were paid what they were owed —
+without trusting the server that did the math or the word of whoever executed it.
 
-## Estructura
+## Structure
 
 ```
-contracts/      Foundry: PoolRegistry, PoolSplitter, tests y despliegue
-orchestrator/   Motor de cálculo (SOLID, bigint) y firma EIP-712 del Safe
-web/            Interfaz de configuración y previsualización (Next.js)
-fixtures/       Fixture de firma generado por el Safe real de HSKChain
+contracts/      Foundry: PoolRegistry, PoolSplitter, tests and deployment
+orchestrator/   Calculation engine (SOLID, bigint) and the Safe's EIP-712 signing
+web/            Configuration and preview interface (Next.js)
+tools/          Local scripts (HashKey Exchange CLI)
+fixtures/       Signature fixture generated by the real Safe on HSKChain
 ```
 
-## Garantías de calidad
+## Quality guarantees
 
-- **70 tests de contratos**: unitarios de cada revert, fuzzing de la conservación del
-  valor, y 5 invariantes con estado sobre 16.384 llamadas encadenadas.
-  100% de líneas y funciones cubiertas.
-- **66 tests del motor**: casos de negocio, validación de telemetría y propiedades con
-  `fast-check`. 98,5% de sentencias.
-- **Integración sin simulacros**: una suite despliega un Safe 2-de-2 real desde la
-  factory oficial de HSKChain, firma con claves reales y ejecuta `execTransaction`
-  sobre un fork de la cadena.
-- **Verificación cruzada**: el hash EIP-712 que calcula el TypeScript se compara contra
-  el que produce el contrato Safe desplegado en HSKChain. Si divergieran, los socios
-  firmarían algo que el contrato no reconoce.
-- **Sin punto flotante en la ruta del dinero.** Todo el reparto es `bigint`. El sobrante
-  de la división entera se asigna por resto mayor, de forma determinista.
+- **93 contract tests**: unit tests for every revert, fuzzing of value conservation,
+  and stateful invariants over chained calls.
+- **176 engine tests**: business cases, telemetry validation and properties with
+  `fast-check`. Coverage above 96% of statements and 90% of branches, enforced in CI.
+- **Integration without mocks**: one suite deploys a real 2-of-2 Safe from HSKChain's
+  official factory, signs with real keys and runs `execTransaction` on a fork of the
+  chain.
+- **Cross-verification**: the EIP-712 hash computed by the TypeScript is compared with
+  the one produced by the Safe contract deployed on HSKChain. If they diverged, the
+  partners would sign something the contract does not recognize.
+- **No floating point on the money path.** The whole split is `bigint`. The remainder
+  of the integer division is assigned by largest remainder, deterministically.
 
-## Puesta en marcha
+## Getting started
 
 ```bash
-npm install                 # instala todo, incluido Foundry con versión fijada
-cp .env.example .env        # completar wallets y RPC
+npm install                 # installs everything, including Foundry at a pinned version
+cp .env.example .env        # fill in wallets and RPC
 
-npm test                    # contratos + motor de cálculo
-npm run coverage:sol        # cobertura de los contratos
-npm run dev --workspace web # interfaz en http://localhost:3000
+npm test                    # contracts + calculation engine
+npm run coverage:sol        # contract coverage
+npm run dev --workspace web # interface at http://localhost:3000
 ```
 
-Foundry se instala **desde npm**, no con `foundryup`: así la versión del compilador
-queda fijada en `package.json` y todo el equipo y el CI compilan idéntico.
+Foundry is installed **from npm**, not with `foundryup`: that way the compiler version
+is pinned in `package.json` and the whole team and CI compile identically.
 
-### Tests contra la cadena real
+### Tests against the real chain
 
 ```bash
 HSK_TESTNET_RPC=https://testnet.hsk.xyz npm run test:fork
 ```
 
-Sin esa variable, las suites de fork se omiten solas.
+Without that variable, the fork suites skip themselves.
 
-### Despliegue
+### Deployment
 
-El pool completo se crea con un comando. `DeployPool` despliega, en orden: el baúl
-de tesorería, el vault del fondo de mantenimiento, el registro y el splitter.
+The whole pool is created with one command. `DeployPool` deploys, in order: the
+treasury vault, the maintenance fund vault, the registry and the splitter.
 
 ```bash
-cp .env.example .env        # ya trae las direcciones del pool
+cp .env.example .env        # already carries the pool addresses
 npm run foundry
 
 cd contracts
 forge script script/DeployPool.s.sol:DeployPool \
   --rpc-url "$HSK_TESTNET_RPC" \
   --broadcast --verify --verifier blockscout \
-  --interactive               # pide la clave sin dejarla en el historial
+  --interactive               # asks for the key without leaving it in the history
 ```
 
-Usá `--interactive` (o `--ledger`, o `--account` con una keystore cifrada) en vez de
-`--private-key`: así la clave no queda en el historial del shell ni en un archivo.
+Use `--interactive` (or `--ledger`, or `--account` with an encrypted keystore) instead
+of `--private-key`: that way the key does not end up in the shell history or in a file.
 
-**Simular antes de gastar**, contra el estado real de la cadena:
+**Simulate before spending**, against the real state of the chain:
 
 ```bash
 forge script script/DeployPool.s.sol:DeployPool \
-  --rpc-url "$HSK_TESTNET_RPC" --sender <tu-wallet>
+  --rpc-url "$HSK_TESTNET_RPC" --sender <your-wallet>
 ```
 
-#### Direcciones previsibles de antemano
+#### Predictable addresses
 
-La factory de Safe usa CREATE2, así que la dirección del baúl depende solo de sus
-dueños, el umbral y el salt — **no de quién ejecuta el despliegue**. Con los dueños y
-el salt de `.env.example`:
+The Safe factory uses CREATE2, so the vault's address depends only on its owners, the
+threshold and the salt — **not on who runs the deployment**. With the owners and salt
+from `.env.example`:
 
-| Contrato | Dirección |
+| Contract | Address |
 |---|---|
-| Baúl de tesorería | `0x4C9F30792C7f0e93d73334Db13a94565153A0709` |
-| Vault de mantenimiento | `0x8cFA796c87e83963052263A06329F1Ef52DE5653` |
+| Treasury vault | `0x4C9F30792C7f0e93d73334Db13a94565153A0709` |
+| Maintenance vault | `0x8cFA796c87e83963052263A06329F1Ef52DE5653` |
 
-Cualquiera puede recalcularlas y verificar que el baúl es el que dice ser.
+Anyone can recompute them and verify that the vault is what it claims to be.
 
-#### Costo
+#### Cost
 
-| Concepto | Gas |
+| Item | Gas |
 |---|---|
-| Baúl de tesorería | 240.927 |
-| Vault de mantenimiento | 235.875 |
-| `PoolRegistry` | 884.119 |
-| `PoolSplitter` | 854.226 |
-| **Total** | **2.215.147** |
+| Treasury vault | 240,927 |
+| Maintenance vault | 235,875 |
+| `PoolRegistry` | 884,119 |
+| `PoolSplitter` | 854,226 |
+| **Total** | **2,215,147** |
 
-A ~2 gwei son unos **0,0065 HSK** incluyendo el margen del script.
+At ~2 gwei that is about **0.0065 HSK**, including the script's margin.
 
-## Desplegado en HSKChain Testnet
+## Deployed on HSKChain Testnet
 
-Contratos verificados en Blockscout — el código es auditable por cualquiera.
+Contracts verified on Blockscout — the code is auditable by anyone.
 
-| Componente | Dirección |
+| Component | Address |
 |---|---|
-| **Baúl de tesorería** (Safe 2-de-2) | [`0x4C9F30792C7f0e93d73334Db13a94565153A0709`](https://testnet-explorer.hskchain.net/address/0x4C9F30792C7f0e93d73334Db13a94565153A0709) |
-| **Vault de mantenimiento** (Safe 2-de-2) | [`0x8cFA796c87e83963052263A06329F1Ef52DE5653`](https://testnet-explorer.hskchain.net/address/0x8cFA796c87e83963052263A06329F1Ef52DE5653) |
-| **PoolRegistry** ✓ verificado | [`0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f`](https://testnet-explorer.hskchain.net/address/0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f) |
-| **PoolSplitter** ✓ verificado | [`0x333FAd08F22752896C55C052352AcE6C6Ab620B7`](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7) |
-| **PoolCredit** (ERC-3009, x402) ✓ verificado | [`0x891a0838Af855147b5E911576E2224c8a23280e4`](https://testnet-explorer.hskchain.net/address/0x891a0838Af855147b5E911576E2224c8a23280e4) |
+| **Treasury vault** (2-of-2 Safe) | [`0x4C9F30792C7f0e93d73334Db13a94565153A0709`](https://testnet-explorer.hskchain.net/address/0x4C9F30792C7f0e93d73334Db13a94565153A0709) |
+| **Maintenance vault** (2-of-2 Safe) | [`0x8cFA796c87e83963052263A06329F1Ef52DE5653`](https://testnet-explorer.hskchain.net/address/0x8cFA796c87e83963052263A06329F1Ef52DE5653) |
+| **PoolRegistry** ✓ verified | [`0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f`](https://testnet-explorer.hskchain.net/address/0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f) |
+| **PoolSplitter** ✓ verified | [`0x333FAd08F22752896C55C052352AcE6C6Ab620B7`](https://testnet-explorer.hskchain.net/address/0x333FAd08F22752896C55C052352AcE6C6Ab620B7) |
+| **PoolCredit** (ERC-3009, x402) ✓ verified | [`0x891a0838Af855147b5E911576E2224c8a23280e4`](https://testnet-explorer.hskchain.net/address/0x891a0838Af855147b5E911576E2224c8a23280e4) |
 
-Destinatarios del reparto:
+> The live demo may point at a newer pool, redeployed for a single signer so it can be
+> executed from one wallet. The addresses the interface actually uses are in
+> `web/lib/defaults.ts`.
 
-| Rol | Dirección |
+Payout recipients:
+
+| Role | Address |
 |---|---|
-| Wallet de la luz | `0xcd23dAd3cDb7eb7046829f033c92107fC60F316b` |
-| Socio A | `0x92302923eBE05EC3984A49755346Cf02327e7CA5` |
-| Socio B | `0x937B8Ead58E73d1A22022d9731536589793207a6` |
+| Power wallet | `0xcd23dAd3cDb7eb7046829f033c92107fC60F316b` |
+| Partner A | `0x92302923eBE05EC3984A49755346Cf02327e7CA5` |
+| Partner B | `0x937B8Ead58E73d1A22022d9731536589793207a6` |
 
-Los dos socios son los dueños del baúl, con umbral de **2 firmas**: ninguno puede
-mover los fondos por su cuenta.
+Both partners are the vault's owners, with a threshold of **2 signatures**: neither
+can move the funds on their own.
 
-## El agente que se paga solo (x402)
+## The agent that pays for itself (x402)
 
-El motor necesita insumos que no son gratis: la tarifa eléctrica vigente, el precio
-del coin. Con **x402** el proveedor responde `402 Payment Required` describiendo su
-precio, el agente firma una autorización de pago y reintenta la llamada.
+The engine needs inputs that are not free: the current electricity rate, the coin's
+price. With **x402** the provider answers `402 Payment Required` describing its price,
+the agent signs a payment authorization and retries the call.
 
-Eso cierra el bucle del proyecto: el hardware genera ingresos → el fondo de
-mantenimiento reserva una porción → **el agente se financia sus propios datos**.
-Máquina a máquina, sin que ningún humano apruebe cada consulta.
+That closes the project's loop: the hardware generates income → the maintenance fund
+sets a portion aside → **the agent funds its own data**. Machine to machine, with no
+human approving each query.
 
-Se implementa el esquema `exact` sobre EVM, que paga con una autorización
-**ERC-3009** firmada fuera de la cadena: quien cobra la presenta y paga el gas, así
-que el agente no necesita gas ni estar en línea.
+It implements the `exact` scheme on EVM, which pays with an **ERC-3009** authorization
+signed off-chain: the party collecting presents it and pays the gas, so the agent needs
+neither gas nor to be online.
 
 ```
 GET /api/tarifa                       → 402 + PAYMENT-REQUIRED
-GET /api/tarifa + PAYMENT-SIGNATURE   → 200 + el dato + PAYMENT-RESPONSE
+GET /api/tarifa + PAYMENT-SIGNATURE   → 200 + the data + PAYMENT-RESPONSE
 ```
 
-Probado de punta a punta contra HSKChain: el saldo del oráculo pasó de 0 a 1000
-unidades con la transacción [`0x4265a470…97df5`](https://testnet-explorer.hskchain.net/tx/0x4265a4702124b7da2cf719f251dc0f3d374040e86352127085b34739e9b97df5).
+Tested end to end against HSKChain: the oracle's balance went from 0 to 1000 units with
+transaction [`0x4265a470…97df5`](https://testnet-explorer.hskchain.net/tx/0x4265a4702124b7da2cf719f251dc0f3d374040e86352127085b34739e9b97df5).
 
-**Alcance honesto:** x402 prevé un *facilitator* que verifica y liquida por cuenta
-del vendedor. En HSKChain no hay ninguno público, así que este servidor hace las dos
-cosas. El formato del protocolo —los tres headers y los objetos que transportan— es
-el del estándar. La liquidación on-chain requiere `X402_SETTLER_KEY`; sin esa
-variable el pago se verifica igual y la respuesta lo dice explícitamente, en vez de
-aparentar un cobro que no ocurrió.
+**Honest scope:** x402 envisions a *facilitator* that verifies and settles on the
+seller's behalf. There is no public one on HSKChain, so this server does both. The
+protocol format — the three headers and the objects they carry — is the standard's.
+On-chain settlement requires `X402_SETTLER_KEY`; without that variable the payment is
+still verified and the response says so explicitly, instead of pretending a charge that
+did not happen.
 
-## Bridge a USDC en Linea (HashKey Exchange)
+## Bridge to USDC on Linea (HashKey Exchange)
 
-Lo minado (HSK o BTC) se pasa a USDC a traves de HashKey Exchange. Hay dos partes,
-separadas a proposito.
+What gets mined (HSK or BTC) is turned into USDC through HashKey Exchange. There are
+two parts, kept apart on purpose.
 
-### Cotizar (en la web, con datos reales)
+### Quote (on the web, with real data)
 
-La tarjeta "Bridge a USDC en Linea" lee del exchange los precios de cada par y el
-costo de retirar USDC (datos publicos, sin credenciales) y cotiza cuanto le queda a
-cada socio. Precio, comisiones y costo del bridge se pueden editar.
+The "Bridge to USDC on Linea" card reads each pair's price and the USDC withdrawal cost
+from the exchange (public data, no credentials) and quotes how much each partner ends
+up with. Price, fees and bridge cost can be edited.
 
-Todo lo que muestra la tarjeta sale de lo que HashKey informa en ese momento; nada de
-la ruta esta escrito a mano:
+Everything the card shows comes from what HashKey reports at that moment; none of the
+route is written by hand:
 
-- **La ruta** se descubre con los pares que el exchange tiene operando, buscando el
-  camino mas corto hasta USDC. Solo pasa por USD, USDT y USDC: nunca por un activo
-  volatil, para que convertir no cambie la exposicion. Si un par deja de operar, la ruta
-  cambia sola, y si ya no hay camino, la tarjeta lo dice.
-- **Las redes de deposito** de cada activo y **las de retiro de USDC** son las que el
-  exchange tiene habilitadas.
-- **La salida de USDC**: si el exchange retira directo a Linea, se usa esa red. Si no, se
-  usa Ethereum (ERC20) y hay que pasar el USDC a Linea con un bridge.
-- **El costo de ese bridge** no lo informa HashKey: se cotiza en vivo con LI.FI (API
-  publica, sin clave) para USDC de Ethereum a Linea, e incluye las comisiones del bridge
-  y el gas de Ethereum. El gas cambia con la red, asi que se lee cada vez. Si la
-  cotizacion falla, el campo queda editable.
-- **Precios, minimos y comisiones de retiro** vienen del mismo exchange.
-- **La comision de venta** es la tasa por operacion por cuantas operaciones recorre la
-  ruta (BTC dos, HSK tres). La tasa depende de tu cuenta y solo se puede leer con tu
-  clave, asi que la pagina publica usa la base de HashKey (0,29%, VIP 0). Para usar la
-  tuya: `npm run hashkey -- comisiones` y fija `NEXT_PUBLIC_HASHKEY_TAKER_BPS` en
-  `web/.env.local` o en las variables de entorno de Vercel. No es un secreto.
+- **The route** is discovered from the pairs the exchange currently has trading, by
+  finding the shortest path to USDC. It only goes through USD, USDT and USDC: never
+  through a volatile asset, so converting does not change the exposure. If a pair stops
+  trading, the route changes by itself, and if there is no path left, the card says so.
+- **The deposit networks** of each asset and **the USDC withdrawal networks** are the
+  ones the exchange has enabled.
+- **The USDC exit**: if the exchange withdraws straight to Linea, that network is used.
+  If not, Ethereum (ERC20) is used and the USDC has to be moved to Linea with a bridge.
+- **The cost of that bridge** is not reported by HashKey: it is quoted live with LI.FI
+  (public API, no key) for USDC from Ethereum to Linea, and includes the bridge's fees
+  and the Ethereum gas. Gas changes with the network, so it is read every time. If the
+  quote fails, the field stays editable.
+- **Prices, minimums and withdrawal fees** come from the same exchange.
+- **The sell fee** is the per-trade rate times the number of trades the route goes
+  through (two for BTC, three for HSK). The rate depends on your account and can only be
+  read with your key, so the public page uses HashKey's base rate (0.29%, VIP 0). To use
+  yours: `npm run hashkey -- comisiones`, then set `NEXT_PUBLIC_HASHKEY_TAKER_BPS` in
+  `web/.env.local` or in Vercel's environment variables. It is not a secret.
 
-Al momento de escribir esto, HashKey no lista ETC, no tiene BTC/USDC (BTC pasa por USDT) y
-no retira USDC a Linea, asi que la ruta de BTC es `BTC/USDT -> USDT/USDC` y la de HSK,
-`HSK/USD -> USDT/USD (compra) -> USDT/USDC`, con salida por Ethereum. Eso puede cambiar.
+At the time of writing, HashKey does not list ETC, has no BTC/USDC pair (BTC goes
+through USDT) and does not withdraw USDC to Linea, so BTC's route is
+`BTC/USDT -> USDT/USDC` and HSK's is `HSK/USD -> USDT/USD (buy) -> USDT/USDC`, exiting
+through Ethereum. That may change.
 
-- La logica esta en `orchestrator/src/domain/bridge.ts` y `adapters/hashkeyMercado.ts`,
-  en `bigint` como el resto del reparto: todo redondeo es hacia abajo y la cotizacion
-  conserva el valor (`bruto = comision de venta + comision de retiro + neto`).
+The logic lives in `orchestrator/src/domain/bridge.ts` and
+`adapters/hashkeyMercado.ts`, in `bigint` like the rest of the split: all rounding is
+downwards and the quote conserves value
+(`gross = sell fee + withdrawal fee + net`).
 
-### Operar (script local, con tu clave)
+#### Demo mode: simulated amounts and a mocked swap
+
+Testnet payouts are only cents, and HashKey requires withdrawing at least 25 USDC, so
+with the exchange's real costs no testnet payout can be converted. To make the flow
+visible anyway, the card has two **simulated** pieces, both clearly labelled:
+
+- **Simulated mainnet-scale amounts** (on by default): the partners' real split is
+  scaled to a larger total (editable), keeping every partner's proportion exactly.
+  Prices, fees and the route stay live. Turning it off shows the honest result with the
+  real testnet amounts.
+- **Run simulated swap**: walks the route step by step with the live prices and ends with
+  what each partner would receive on Linea. It sends no order and moves no funds.
+
+### Trade (local script, with your key)
 
 ```bash
-cp .env.example .env         # completar HASHKEY_API_KEY, HASHKEY_API_SECRET y el tope
+cp .env.example .env         # fill in HASHKEY_API_KEY, HASHKEY_API_SECRET and the cap
 
-npm run hashkey -- mercado                     # precios, reglas y costos (sin clave)
-npm run hashkey -- saldo                       # tus saldos
-npm run hashkey -- comisiones                  # lo que tu cuenta paga por operacion, por ruta
-npm run hashkey -- bridge 25                   # costo en vivo de pasar 25 USDC de Ethereum a Linea
-npm run hashkey -- probar  BTCUSDT SELL 0.001  # valida contra el exchange, no envia nada
-npm run hashkey -- ordenar BTCUSDT SELL 0.001  # orden real: pide escribir CONFIRMAR
+npm run hashkey -- mercado                     # prices, rules and costs (no key)
+npm run hashkey -- saldo                       # your balances
+npm run hashkey -- comisiones                  # what your account pays per trade, per route
+npm run hashkey -- bridge 25                   # live cost of moving 25 USDC from Ethereum to Linea
+npm run hashkey -- probar  BTCUSDT SELL 0.001  # validates against the exchange, sends nothing
+npm run hashkey -- ordenar BTCUSDT SELL 0.001  # real order: asks you to type CONFIRMAR
 ```
 
-Por defecto corre contra el **sandbox**. Para operar con dinero real, `HASHKEY_ENV=production`.
+It runs against the **sandbox** by default. To trade with real money, set
+`HASHKEY_ENV=production`. (The script's command names and output are in Spanish.)
 
-Es un script local y no un endpoint de la web porque la web esta desplegada de forma
-publica: un endpoint que operara con tu clave permitiria a cualquiera mover tu dinero.
-`orchestrator/src/adapters/hashkeyCuenta.ts`, que firma y opera, no se exporta desde el
-paquete y la web no puede importarlo.
+It is a local script and not a web endpoint because the web is deployed publicly: an
+endpoint that traded with your key would let anyone who opened the page move your money.
+`orchestrator/src/adapters/hashkeyCuenta.ts`, which signs and trades, is not exported
+from the package and the web cannot import it.
 
-Salvaguardas:
+Safeguards:
 
-- Solo se aceptan las operaciones de la ruta a USDC, descubierta con los pares del propio
-  exchange. No se puede comprar BTC ni operar otro par.
-- Las ordenes son `LIMIT IOC` a un precio protegido: nunca peor que el mejor precio del
-  libro menos `HASHKEY_MAX_SLIPPAGE_BPS`. Se ejecutan al instante o se cancelan.
-- `HASHKEY_MAX_ORDER_USD` es obligatorio y se mide con el mayor entre el precio limite y
-  el de referencia.
-- `ordenar` valida primero con `orderTest`, pide `CONFIRMAR` escrito y se niega a correr
-  sin una terminal interactiva.
-- No hay retiros: sacar fondos se hace desde la web de HashKey, a una direccion en whitelist.
-- Crea la clave sin permiso de retiro.
+- Only the operations of the route to USDC are accepted, discovered from the exchange's
+  own pairs. You cannot buy BTC or trade any other pair.
+- Orders are `LIMIT IOC` at a protected price: never worse than the best book price
+  minus `HASHKEY_MAX_SLIPPAGE_BPS`. They fill immediately or are cancelled.
+- `HASHKEY_MAX_ORDER_USD` is mandatory and is measured against the larger of the limit
+  price and the reference price.
+- `ordenar` validates first with `orderTest`, asks you to type `CONFIRMAR` and refuses to
+  run without an interactive terminal.
+- There are no withdrawals: taking funds out is done from HashKey's website, to a
+  whitelisted address.
+- Create the key without withdrawal permission.
 
-**Cuentas retail:** `exchangeInfo` marca `retailAllowed: false` en los pares de la ruta. Con una cuenta retail el exchange puede rechazar las ordenes; `probar` lo
-comprueba sin arriesgar nada.
+**Retail accounts:** `exchangeInfo` marks `retailAllowed: false` on the route's pairs.
+With a retail account the exchange may reject the orders; `probar` checks that without
+risking anything.
 
-## Cadenas
+## Chains
 
-| Red | Chain ID | RPC | Explorer |
+| Network | Chain ID | RPC | Explorer |
 |---|---|---|---|
 | HSKChain Testnet | 133 | `https://testnet.hsk.xyz` | [Blockscout](https://testnet-explorer.hskchain.net) |
 | HSKChain | 177 | `https://mainnet.hsk.xyz` | [Blockscout](https://hsk.blockscout.com) |
 
-Safe v1.3.0 y v1.4.1 están desplegados en HSKChain testnet, junto con el deployer
-CREATE2 y Multicall3.
+Safe v1.3.0 and v1.4.1 are deployed on HSKChain testnet, along with the CREATE2
+deployer and Multicall3.
 
-> El documento de la hackathon indica `https://testnet.hsk.xyz` como RPC de mainnet.
-> Es un error: ese endpoint responde chain ID 133 (testnet). El de mainnet, que
-> responde 177, es `https://mainnet.hsk.xyz`.
+> The hackathon document lists `https://testnet.hsk.xyz` as the mainnet RPC. That is a
+> mistake: that endpoint answers chain ID 133 (testnet). The mainnet one, which answers
+> 177, is `https://mainnet.hsk.xyz`.
 
-## Alcance de la demostración
+## Scope of the demonstration
 
-Los datos de hardware y telemetría son **simulados** y se editan desde la interfaz.
-El cálculo del reparto, el hash de auditoría, la firma del multisig y los contratos
-son **reales** y están verificados contra la cadena.
+The hardware and telemetry data are **simulated** and editable from the interface. The
+payout calculation, the audit hash, the multisig signature and the contracts are **real**
+and verified against the chain. In the bridge card, prices, fees, the route and the
+bridge cost are real and live; the payout amounts and the swap run are simulated.

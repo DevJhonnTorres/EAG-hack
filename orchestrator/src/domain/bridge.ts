@@ -99,7 +99,7 @@ export function quoteBridge(partner: Address, amountIn: bigint, terms: BridgeTer
   assertNonNegative("amountIn", amountIn);
   assertNonNegative("withdrawalFee", terms.withdrawalFee);
   assertNonNegative("minWithdrawal", terms.minWithdrawal);
-  if (terms.rateE18 <= 0n) throw new RangeError(`el precio debe ser positivo: ${terms.rateE18}`);
+  if (terms.rateE18 <= 0n) throw new RangeError(`the price must be positive: ${terms.rateE18}`);
 
   const unidadActivo = 10n ** BigInt(BRIDGE_ASSETS[terms.asset].decimals);
   const unidadUsdc = 10n ** BigInt(USDC_DECIMALS);

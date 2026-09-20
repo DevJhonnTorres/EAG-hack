@@ -86,11 +86,11 @@ export async function fetchHistorial(
     response = await fetch(url, signal ? { signal } : {});
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
-    throw new BlockscoutError(`no se pudo contactar al explorer: ${String(error)}`);
+    throw new BlockscoutError(`could not reach the explorer: ${String(error)}`);
   }
 
   if (!response.ok) {
-    throw new BlockscoutError(`el explorer respondio ${response.status}`);
+    throw new BlockscoutError(`the explorer responded ${response.status}`);
   }
 
   const cuerpo = (await response.json()) as { items?: BlockscoutLog[] };

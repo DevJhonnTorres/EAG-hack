@@ -56,7 +56,7 @@ function requisito(resource: string): PaymentRequirement {
     network: RED,
     maxAmountRequired: PRECIO,
     resource,
-    description: "Tarifa electrica vigente, en wei por kWh",
+    description: "Current electricity rate, in wei per kWh",
     mimeType: "application/json",
     payTo: COBRA,
     asset: CONTRATOS.credito,
@@ -72,7 +72,7 @@ function tarifa() {
     currency: CADENA.moneda,
     network: RED,
     asOf: new Date().toISOString(),
-    source: "simulado",
+    source: "simulated",
   };
 }
 
@@ -175,7 +175,7 @@ export async function GET(request: Request): Promise<Response> {
             [HEADER_PAYMENT_RESPONSE]: encodeSettlementResponse({
               success: false,
               network: RED,
-              errorReason: "el pagador no tiene saldo para cubrir este pago",
+              errorReason: "the payer has no balance to cover this payment",
             }),
           },
         },
@@ -194,7 +194,7 @@ export async function GET(request: Request): Promise<Response> {
     liquidacion = {
       success: false,
       network: RED,
-      errorReason: "pago verificado; no hay clave de liquidacion configurada en este despliegue",
+      errorReason: "payment verified; no settlement key is configured in this deployment",
     };
   }
 

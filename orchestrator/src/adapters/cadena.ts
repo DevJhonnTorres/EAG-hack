@@ -30,7 +30,7 @@ export class CadenaIncorrectaError extends Error {
     readonly actual: number,
     readonly esperada: number,
   ) {
-    super(`la wallet esta en la cadena ${actual} y el pool vive en la ${esperada}`);
+    super(`the wallet is on chain ${actual} and the pool lives on chain ${esperada}`);
     this.name = "CadenaIncorrectaError";
   }
 }
@@ -74,9 +74,9 @@ export const SOLICITUD_PENDIENTE = -32002;
 export function mensajeDeWallet(causa: unknown): string {
   const codigo = codigoRpc(causa);
   if (codigo === SOLICITUD_PENDIENTE) {
-    return "La wallet ya tiene una solicitud abierta de esta pagina. Abre la extension, aprueba o rechaza esa solicitud y vuelve a intentar.";
+    return "The wallet already has an open request from this page. Open the extension, approve or reject that request, and try again.";
   }
-  if (codigo === RECHAZADA_POR_LA_PERSONA) return "Rechazaste la solicitud en la wallet.";
+  if (codigo === RECHAZADA_POR_LA_PERSONA) return "You rejected the request in the wallet.";
   return causa instanceof Error ? causa.message : String(causa);
 }
 

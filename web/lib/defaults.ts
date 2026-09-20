@@ -83,6 +83,16 @@ export const BRIDGE_INICIAL: Record<BridgeAsset, CamposBridge> = {
   BTC: { precio: "80000", comisionRetiro: "0.0001", retiroMinimo: "0.0001", costoBridge: "0" },
 };
 
+/**
+ * Pago total a los socios que la vista de demostracion simula convertir, por activo.
+ *
+ * El reparto de testnet es de centavos y HashKey exige retirar al menos 25 USDC, asi
+ * que sin esto ninguna linea seria viable. Con estos montos (unos 1.000 USD) la
+ * conversion se ve completa, usando los precios y costos reales. Se editan desde la
+ * pantalla, y se pueden apagar para ver el resultado con los montos reales.
+ */
+export const BRIDGE_SIMULADO_INICIAL: Record<BridgeAsset, string> = { HSK: "10000", BTC: "0.02" };
+
 /** Un entero de basis points entre 0 y 500, o el valor por defecto si no lo es. */
 function leerBps(texto: string | undefined, porDefecto: number): number {
   const valor = Number(texto);

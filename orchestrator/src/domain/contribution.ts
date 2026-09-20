@@ -22,7 +22,7 @@ export interface ContributionCalculator {
 export class UnknownRigError extends Error {
   constructor(rigId: string) {
     super(
-      `la telemetria reporta el equipo "${rigId}", que no esta declarado en la configuracion del pool`,
+      `telemetry reports rig "${rigId}", which is not declared in the pool configuration`,
     );
     this.name = "UnknownRigError";
   }
@@ -40,7 +40,7 @@ export class HashrateWeightedContributionCalculator implements ContributionCalcu
     const epochSeconds = telemetry.endedAt - telemetry.startedAt;
     if (epochSeconds <= 0) {
       throw new InvalidTelemetryError(
-        `el periodo ${telemetry.epochId} termina antes de empezar (${telemetry.startedAt} -> ${telemetry.endedAt})`,
+        `period ${telemetry.epochId} ends before it starts (${telemetry.startedAt} -> ${telemetry.endedAt})`,
       );
     }
 
@@ -54,7 +54,7 @@ export class HashrateWeightedContributionCalculator implements ContributionCalcu
       // aprobo: la direccion de ese socio podria no estar ni en el registro.
       if (!spec) throw new UnknownRigError(reading.rigId);
       if (readings.has(reading.rigId)) {
-        throw new InvalidTelemetryError(`el equipo "${reading.rigId}" reporta dos veces en el mismo periodo`);
+        throw new InvalidTelemetryError(`rig "${reading.rigId}" reports twice in the same period`);
       }
       this.#validateReading(reading, epochSeconds);
       readings.set(reading.rigId, reading);
@@ -99,17 +99,17 @@ export class HashrateWeightedContributionCalculator implements ContributionCalcu
   #validateReading(reading: RigTelemetry, epochSeconds: number): void {
     if (!Number.isInteger(reading.uptimeSeconds) || reading.uptimeSeconds < 0) {
       throw new InvalidTelemetryError(
-        `uptime invalido para "${reading.rigId}": ${reading.uptimeSeconds}`,
+        `invalid uptime for "${reading.rigId}": ${reading.uptimeSeconds}`,
       );
     }
     if (reading.uptimeSeconds > epochSeconds) {
       throw new InvalidTelemetryError(
-        `el equipo "${reading.rigId}" reporta ${reading.uptimeSeconds}s encendido en un periodo de ${epochSeconds}s`,
+        `rig "${reading.rigId}" reports ${reading.uptimeSeconds}s powered on in a period of ${epochSeconds}s`,
       );
     }
     if (!Number.isInteger(reading.averageHashrateMilliHs) || reading.averageHashrateMilliHs < 0) {
       throw new InvalidTelemetryError(
-        `hashrate invalido para "${reading.rigId}": ${reading.averageHashrateMilliHs}`,
+        `invalid hashrate for "${reading.rigId}": ${reading.averageHashrateMilliHs}`,
       );
     }
   }

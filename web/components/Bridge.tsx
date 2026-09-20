@@ -5,15 +5,19 @@ import {
   BRIDGE_ASSETS,
   USDC_DECIMALS,
   planBridge,
+  simularRuta,
+  splitByWeight,
   type BridgeAsset,
   type BridgeQuote,
   type BridgeRejection,
   type MercadoRuta,
   type PasoRuta,
   type Settlement,
+  type SettlementPayout,
 } from "@hashpool/orchestrator";
 import {
   BRIDGE_INICIAL,
+  BRIDGE_SIMULADO_INICIAL,
   COMISION_VENTA_BPS_INICIAL,
   TASA_POR_OPERACION_BPS,
   type CamposBridge,
@@ -23,12 +27,12 @@ import { acortarDireccion, formatUnidades, parseUnidades } from "@/lib/format";
 const ACTIVOS = Object.keys(BRIDGE_ASSETS) as BridgeAsset[];
 
 const MOTIVO: Record<BridgeRejection, string> = {
-  NO_AMOUNT: "monto demasiado chico",
-  FEES_EXCEED_AMOUNT: "las comisiones superan el monto",
-  BELOW_MINIMUM: "bajo el retiro minimo",
+  NO_AMOUNT: "amount too small",
+  FEES_EXCEED_AMOUNT: "fees exceed the amount",
+  BELOW_MINIMUM: "below the minimum withdrawal",
 };
 
-/** Cotizacion en vivo del ultimo tramo, de Ethereum a Linea. Los montos vienen como texto entero (6 decimales). */
+/** Live quote for the last leg, Ethereum to Linea. Amounts arrive as integer text (6 decimals). */
 interface CotizacionDelBridge {
   readonly herramienta: string;
   readonly comisiones: string;
@@ -37,24 +41,26 @@ interface CotizacionDelBridge {
   readonly segundos: number | null;
 }
 
-/** De donde salen el precio y los costos de retiro que se estan usando. */
+/** Where the price and withdrawal costs in use come from. */
 type Origen = "cargando" | "real" | "demo" | "error";
 
 const describirPaso = ({ side, base, quote, symbol }: PasoRuta) =>
-  side === "SELL" ? `vender ${base} por ${quote} (${symbol})` : `comprar ${base} con ${quote} (${symbol})`;
+  side === "SELL" ? `sell ${base} for ${quote} (${symbol})` : `buy ${base} with ${quote} (${symbol})`;
 
-/** HashKey llama ERC20 a Ethereum. Se aclara para que se entienda a donde va el USDC. */
+/** HashKey calls Ethereum "ERC20". Spelled out so it is clear where the USDC goes. */
 const nombreDeRed = (red: string) => (red === "ERC20" ? "Ethereum (ERC20)" : red);
 
 /**
- * Cuanto USDC le queda a cada socio si pasa lo minado por HashKey Exchange.
+ * How much USDC each partner ends up with if their share goes through HashKey Exchange.
  *
- * Es una cotizacion: no envia nada. La ruta, las redes de deposito y de retiro,
- * los precios y los costos de retiro se leen del exchange (datos publicos, sin
- * credenciales): si el exchange cambia un par o una red, esta tarjeta lo refleja.
+ * It is a quote: nothing is sent. The route, deposit and withdrawal networks, prices and
+ * withdrawal costs are read from the exchange (public data, no credentials), so if the
+ * exchange changes a pair or a network, this card follows.
  *
- * Las ordenes reales se hacen con `npm run hashkey` desde una maquina local: esta
- * pagina esta publicada y no puede tener acceso a ninguna clave.
+ * Testnet payouts are only cents, far below the exchange's minimum withdrawal, so by
+ * default the card previews a simulated mainnet-scale payout and can "run" the swap
+ * step by step. That part is a mock: real orders are placed with `npm run hashkey` from a
+ * local machine, because this page is public and must never hold a key.
  */
 export function Bridge({ settlement }: { settlement: Settlement | null }) {
   const [activo, setActivo] = useState<BridgeAsset>("HSK");
@@ -64,6 +70,8 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
   const [tramoFallo, setTramoFallo] = useState(false);
   const [origen, setOrigen] = useState<Origen>("cargando");
   const [mercado, setMercado] = useState<MercadoRuta | null>(null);
+  const [simulado, setSimulado] = useState(true);
+  const [totalesSimulados, setTotalesSimulados] = useState<Record<BridgeAsset, string>>(BRIDGE_SIMULADO_INICIAL);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -71,7 +79,7 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
     (async () => {
       try {
         const respuesta = await fetch("/api/hashkey/mercado", { signal: controller.signal });
-        if (!respuesta.ok) throw new Error(`HashKey respondio ${respuesta.status}`);
+        if (!respuesta.ok) throw new Error(`HashKey responded ${respuesta.status}`);
         const datos = (await respuesta.json()) as MercadoRuta;
 
         setCampos((previo) => {
@@ -91,13 +99,13 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
         setMercado(datos);
         setOrigen("real");
 
-        // HashKey no retira a Linea: se cotiza en vivo el ultimo tramo, desde Ethereum.
+        // HashKey does not withdraw to Linea: the last leg, from Ethereum, is quoted live.
         if (datos.retiroUsdc && !datos.retiroUsdc.esLinea) {
           try {
             const bridge = await fetch(`/api/bridge/linea?monto=${encodeURIComponent(datos.retiroUsdc.minimo)}`, {
               signal: controller.signal,
             });
-            if (!bridge.ok) throw new Error(`bridge respondio ${bridge.status}`);
+            if (!bridge.ok) throw new Error(`bridge responded ${bridge.status}`);
             const cotizacion = (await bridge.json()) as CotizacionDelBridge;
             const costo = formatUnidades(BigInt(cotizacion.costoTotal), USDC_DECIMALS, USDC_DECIMALS);
             setCampos((previo) => {
@@ -112,7 +120,7 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
           }
         }
 
-        // Si el activo elegido no tiene ruta hoy, se pasa a uno que si la tenga.
+        // If the chosen asset has no route today, switch to one that does.
         setActivo((elegido) => (datos.rutas[elegido] ? elegido : (ACTIVOS.find((a) => datos.rutas[a]) ?? elegido)));
       } catch (causa) {
         if (causa instanceof Error && causa.name === "AbortError") return;
@@ -138,17 +146,31 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
   const ruta = mercado?.rutas[activo];
   const retiro = mercado?.retiroUsdc ?? null;
 
-  // La comision de la ruta es la tasa por operacion, por cuantas operaciones recorre.
+  // The route's fee is the per-trade rate times the number of trades it goes through.
   const comisionSugerida = ruta ? ruta.pasos.length * TASA_POR_OPERACION_BPS : COMISION_VENTA_BPS_INICIAL;
   const comisionVentaBps = comisionEditada ?? comisionSugerida;
-  // Si el exchange retira directo a Linea no hay un ultimo tramo que costear.
+  // If the exchange withdraws straight to Linea there is no last leg to cost.
   const hayBridgeAparte = !(retiro?.esLinea ?? false);
+
+  // The payouts being quoted: the real ones, or the same split scaled to a mainnet-sized total.
+  const { pagos, totalSimuladoInvalido } = useMemo(() => {
+    const reales: readonly SettlementPayout[] = settlement?.partnerPayouts ?? [];
+    if (!simulado || reales.length === 0) return { pagos: reales, totalSimuladoInvalido: false };
+    try {
+      const total = parseUnidades(totalesSimulados[activo], 18);
+      // The split of the real payout is kept: only its size changes, without losing a unit.
+      const partes = splitByWeight(total, reales.map((pago) => pago.amount));
+      return { pagos: reales.map((pago, i) => ({ ...pago, amount: partes[i] ?? 0n })), totalSimuladoInvalido: false };
+    } catch {
+      return { pagos: reales, totalSimuladoInvalido: true };
+    }
+  }, [settlement, simulado, totalesSimulados, activo]);
 
   const resultado = useMemo(() => {
     if (!settlement) return { cotizaciones: null, error: null as string | null };
     try {
       const costoBridge = hayBridgeAparte ? parseUnidades(actual.costoBridge, USDC_DECIMALS) : 0n;
-      const cotizaciones = planBridge(settlement.partnerPayouts, {
+      const cotizaciones = planBridge(pagos, {
         asset: activo,
         rateE18: parseUnidades(actual.precio, 18),
         tradeFeeBps: comisionVentaBps,
@@ -159,48 +181,46 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
     } catch (causa) {
       return { cotizaciones: null, error: causa instanceof Error ? causa.message : String(causa) };
     }
-  }, [settlement, activo, actual, comisionVentaBps, hayBridgeAparte]);
+  }, [settlement, pagos, activo, actual, comisionVentaBps, hayBridgeAparte]);
 
   const decimalesActivo = BRIDGE_ASSETS[activo].decimals;
   const usdc = (monto: bigint) => formatUnidades(monto, USDC_DECIMALS, USDC_DECIMALS);
 
+  const viables = (resultado.cotizaciones ?? []).filter((cotizacion) => cotizacion.rejection === null);
   const todasInviables =
-    resultado.cotizaciones !== null &&
-    resultado.cotizaciones.length > 0 &&
-    resultado.cotizaciones.every((cotizacion) => cotizacion.rejection !== null);
+    resultado.cotizaciones !== null && resultado.cotizaciones.length > 0 && viables.length === 0;
 
   return (
     <section className="tarjeta">
-      <h2>Bridge a USDC en Linea</h2>
+      <h2>Bridge to USDC on Linea</h2>
       <p className="subtitulo">
-        Cuanto USDC le queda a cada socio si pasa su parte por HashKey Exchange. Esta tarjeta solo cotiza: no
-        envia nada. Las ordenes se hacen con <code>npm run hashkey</code> desde tu maquina.
+        How much USDC each partner ends up with if their share goes through HashKey Exchange. This card only
+        quotes: it sends nothing. Real orders are placed with <code>npm run hashkey</code> from your machine.
       </p>
 
-      {origen === "cargando" && <div className="aviso alerta">Leyendo HashKey Exchange...</div>}
+      {origen === "cargando" && <div className="aviso alerta">Reading HashKey Exchange...</div>}
       {origen === "real" && mercado && (
         <div className="aviso ok">
-          Ruta, redes, precios y costos de retiro leidos de HashKey Exchange a las{" "}
-          {new Date(mercado.leidoEn).toLocaleTimeString()}. Es el ultimo precio de cada par: no incluye el
-          margen entre compra y venta. <button onClick={usarDemo}>Usar valores de demostracion</button>
+          Route, networks, prices and withdrawal costs read from HashKey Exchange at{" "}
+          {new Date(mercado.leidoEn).toLocaleTimeString()}. It is the last price of each pair: it does not include
+          the bid/ask spread. <button onClick={usarDemo}>Use demo values</button>
         </div>
       )}
       {origen === "error" && (
         <div className="aviso alerta">
-          No se pudo leer HashKey Exchange: se muestran valores de demostracion, que no son cotizaciones, y no
-          se conoce la ruta.
+          Could not read HashKey Exchange: demo values are shown, which are not quotes, and the route is unknown.
         </div>
       )}
       {origen === "demo" && (
         <div className="aviso alerta">
-          Valores de demostracion: no son cotizaciones y no se conoce la ruta. El retiro minimo real de USDC es
-          mayor que cualquier monto de esta demo.
+          Demo values: not quotes, and the route is unknown. The real minimum USDC withdrawal is larger than any
+          amount in this demo.
         </div>
       )}
 
       <div className="campos">
         <div>
-          <label htmlFor="bridge-activo">Activo a convertir</label>
+          <label htmlFor="bridge-activo">Asset to convert</label>
           <select
             id="bridge-activo"
             value={activo}
@@ -212,14 +232,14 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
             {ACTIVOS.map((opcion) => (
               <option key={opcion} value={opcion} disabled={mercado !== null && !mercado.rutas[opcion]}>
                 {opcion}
-                {mercado !== null && !mercado.rutas[opcion] ? " (sin ruta en HashKey)" : ""}
+                {mercado !== null && !mercado.rutas[opcion] ? " (no route on HashKey)" : ""}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label htmlFor="bridge-precio">Precio (USDC por 1 {activo})</label>
+          <label htmlFor="bridge-precio">Price (USDC per 1 {activo})</label>
           <input
             id="bridge-precio"
             className="mono"
@@ -231,12 +251,12 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
 
         <div>
           <label htmlFor="bridge-venta">
-            Comision de venta de la ruta ({(comisionVentaBps / 100).toFixed(2)}%
+            Route sell fee ({(comisionVentaBps / 100).toFixed(2)}%
             {comisionEditada === null && ruta
-              ? `: ${ruta.pasos.length} operaciones x ${(TASA_POR_OPERACION_BPS / 100).toFixed(2)}%, tarifa base de HashKey`
+              ? `: ${ruta.pasos.length} trades x ${(TASA_POR_OPERACION_BPS / 100).toFixed(2)}%, HashKey base rate`
               : comisionEditada !== null
-                ? ", editada"
-                : ", supuesto"}
+                ? ", edited"
+                : ", assumed"}
             )
           </label>
           <input
@@ -252,7 +272,7 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
 
         <div>
           <label htmlFor="bridge-retiro">
-            Comision de retiro de USDC{retiro ? ` por ${nombreDeRed(retiro.chain)}` : ""}
+            USDC withdrawal fee{retiro ? ` via ${nombreDeRed(retiro.chain)}` : ""}
           </label>
           <input
             id="bridge-retiro"
@@ -264,7 +284,7 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
         </div>
 
         <div>
-          <label htmlFor="bridge-minimo">Retiro minimo de USDC</label>
+          <label htmlFor="bridge-minimo">Minimum USDC withdrawal</label>
           <input
             id="bridge-minimo"
             className="mono"
@@ -277,7 +297,7 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
         {hayBridgeAparte && (
           <div>
             <label htmlFor="bridge-costo">
-              Costo del bridge de Ethereum a Linea (USDC{tramo ? `, cotizado con ${tramo.herramienta}` : ""})
+              Ethereum to Linea bridge cost (USDC{tramo ? `, quoted with ${tramo.herramienta}` : ""})
             </label>
             <input
               id="bridge-costo"
@@ -288,14 +308,47 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
             />
             {tramo && (
               <p className="subtitulo" style={{ margin: "4px 0 0" }}>
-                Comisiones del bridge {formatUnidades(BigInt(tramo.comisiones), USDC_DECIMALS, USDC_DECIMALS)} + gas de
-                Ethereum {formatUnidades(BigInt(tramo.gas), USDC_DECIMALS, USDC_DECIMALS)}
-                {tramo.segundos !== null ? `, unos ${tramo.segundos}s` : ""}. El gas cambia con la red.
+                Bridge fees {formatUnidades(BigInt(tramo.comisiones), USDC_DECIMALS, USDC_DECIMALS)} + Ethereum gas{" "}
+                {formatUnidades(BigInt(tramo.gas), USDC_DECIMALS, USDC_DECIMALS)}
+                {tramo.segundos !== null ? `, about ${tramo.segundos}s` : ""}. Gas changes with the network.
               </p>
             )}
             {tramoFallo && (
               <p className="subtitulo" style={{ margin: "4px 0 0" }}>
-                No se pudo cotizar el bridge: ponlo a mano.
+                Could not quote the bridge: enter it by hand.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="aviso alerta" style={{ marginTop: 4 }}>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", margin: 0 }}>
+          <input
+            type="checkbox"
+            checked={simulado}
+            onChange={(evento) => setSimulado(evento.target.checked)}
+            style={{ width: "auto" }}
+          />
+          <span>
+            <strong>Simulated mainnet-scale amounts.</strong> Testnet payouts are only cents, far below
+            HashKey&apos;s minimum withdrawal, so this previews the partners&apos; real split scaled to a larger total.
+            Prices, fees and the route stay live; nothing is sent.
+          </span>
+        </label>
+        {simulado && (
+          <div style={{ marginTop: 10 }}>
+            <label htmlFor="bridge-total-simulado">Simulated total payout to the partners ({activo})</label>
+            <input
+              id="bridge-total-simulado"
+              className="mono"
+              type="text"
+              value={totalesSimulados[activo]}
+              onChange={(evento) => setTotalesSimulados((previo) => ({ ...previo, [activo]: evento.target.value }))}
+            />
+            {totalSimuladoInvalido && (
+              <p className="subtitulo" style={{ margin: "4px 0 0" }}>
+                Enter a valid amount: the real testnet payouts are used until then.
               </p>
             )}
           </div>
@@ -304,14 +357,15 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
 
       <Ruta activo={activo} mercado={mercado} pasos={ruta?.pasos} depositos={ruta?.redesDeposito} />
 
-      {resultado.error && <div className="aviso error">No se pudo cotizar el bridge: {resultado.error}</div>}
+      {resultado.error && <div className="aviso error">Could not quote the bridge: {resultado.error}</div>}
       {!settlement && !resultado.error && (
-        <div className="aviso alerta">Falta un reparto valido para poder cotizar el bridge.</div>
+        <div className="aviso alerta">A valid payout is needed to quote the bridge.</div>
       )}
-      {todasInviables && origen === "real" && (
+      {todasInviables && !simulado && origen === "real" && (
         <div className="aviso alerta">
-          Con los costos reales del exchange, ningun pago de este reparto se puede pasar a USDC: son montos de
-          testnet, muy por debajo del retiro minimo.
+          With the exchange&apos;s real costs, none of this payout can be converted to USDC: these are testnet
+          amounts, far below the minimum withdrawal. Turn on the simulated amounts above to preview a mainnet-scale
+          conversion.
         </div>
       )}
 
@@ -319,11 +373,11 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
         <table>
           <thead>
             <tr>
-              <th>Socio</th>
-              <th>Entra ({activo})</th>
-              <th>USDC bruto</th>
-              <th>Comisiones</th>
-              <th style={{ textAlign: "right" }}>Queda en USDC</th>
+              <th>Partner</th>
+              <th>In ({activo})</th>
+              <th>Gross USDC</th>
+              <th>Fees</th>
+              <th style={{ textAlign: "right" }}>Left in USDC</th>
             </tr>
           </thead>
           <tbody>
@@ -333,11 +387,25 @@ export function Bridge({ settlement }: { settlement: Settlement | null }) {
           </tbody>
         </table>
       )}
+
+      {ruta && mercado && viables.length > 0 && (
+        <SwapSimulado
+          activo={activo}
+          pasos={ruta.pasos}
+          precios={mercado.precios}
+          viables={viables}
+          decimalesActivo={decimalesActivo}
+          comisionVentaBps={comisionVentaBps}
+          comisionRetiro={parseUnidades(actual.comisionRetiro, USDC_DECIMALS)}
+          costoBridge={hayBridgeAparte ? parseUnidades(actual.costoBridge, USDC_DECIMALS) : 0n}
+          usdc={usdc}
+        />
+      )}
     </section>
   );
 }
 
-/** La ruta completa, tal como el exchange la ofrece hoy. Sin datos, no se afirma nada. */
+/** The whole route, as the exchange offers it today. With no data, nothing is claimed. */
 function Ruta({
   activo,
   mercado,
@@ -350,27 +418,173 @@ function Ruta({
   depositos: readonly string[] | undefined;
 }) {
   if (!mercado) {
-    return <p className="subtitulo">La ruta se lee de HashKey Exchange. Sin conexion con el exchange no se muestra.</p>;
+    return <p className="subtitulo">The route is read from HashKey Exchange. Without a connection to it, it is not shown.</p>;
   }
   if (!pasos) {
-    return <p className="subtitulo">HashKey Exchange no ofrece hoy un camino de {activo} a USDC.</p>;
+    return <p className="subtitulo">HashKey Exchange offers no path from {activo} to USDC today.</p>;
   }
 
   const retiro = mercado.retiroUsdc;
-  const deposito = depositos && depositos.length > 0 ? depositos.map(nombreDeRed).join(" o ") : "ninguna red habilitada";
+  const deposito = depositos && depositos.length > 0 ? depositos.map(nombreDeRed).join(" or ") : "no enabled network";
 
   return (
     <p className="subtitulo">
-      Ruta: depositar {activo} en el exchange (por {deposito}) &rarr; {pasos.map(describirPaso).join(" → ")}{" "}
+      Route: deposit {activo} at the exchange (via {deposito}) &rarr; {pasos.map(describirPaso).join(" → ")}{" "}
       &rarr;{" "}
       {retiro
         ? retiro.esLinea
-          ? `retirar USDC directo a ${retiro.chain}.`
-          : `retirar USDC por ${nombreDeRed(retiro.chain)}. HashKey no retira USDC a Linea: despues hay que pasarlo con un bridge, fuera del exchange.`
-        : "HashKey no ofrece hoy una salida de USDC que lleve a Linea."}{" "}
-      Redes por las que entrega USDC:{" "}
-      {mercado.redesRetiroUsdc.length > 0 ? mercado.redesRetiroUsdc.map(nombreDeRed).join(", ") : "ninguna"}.
+          ? `withdraw USDC straight to ${retiro.chain}.`
+          : `withdraw USDC via ${nombreDeRed(retiro.chain)}. HashKey does not withdraw USDC to Linea: it then has to be moved with a bridge, outside the exchange.`
+        : "HashKey offers no USDC exit that leads to Linea today."}{" "}
+      Networks it withdraws USDC on:{" "}
+      {mercado.redesRetiroUsdc.length > 0 ? mercado.redesRetiroUsdc.map(nombreDeRed).join(", ") : "none"}.
     </p>
+  );
+}
+
+const PASO_MS = 700;
+
+/**
+ * A mock of running the swap: it walks the route step by step with the live prices and ends
+ * with what each partner would receive on Linea. No order is sent and no funds move.
+ */
+function SwapSimulado({
+  activo,
+  pasos,
+  precios,
+  viables,
+  decimalesActivo,
+  comisionVentaBps,
+  comisionRetiro,
+  costoBridge,
+  usdc,
+}: {
+  activo: BridgeAsset;
+  pasos: readonly PasoRuta[];
+  precios: Readonly<Record<string, string>>;
+  viables: readonly BridgeQuote[];
+  decimalesActivo: number;
+  comisionVentaBps: number;
+  comisionRetiro: bigint;
+  costoBridge: bigint;
+  usdc: (monto: bigint) => string;
+}) {
+  // How many steps have "run": 0 = not started, pasos.length + 1 = finished and summarised.
+  const [avance, setAvance] = useState<number | null>(null);
+
+  const totalEntra = viables.reduce((acc, cotizacion) => acc + cotizacion.amountIn, 0n);
+  const fills = useMemo(() => {
+    try {
+      // The simulation chains steps in 18-decimal fixed point, whatever the asset.
+      return simularRuta(pasos, precios, totalEntra * 10n ** BigInt(18 - decimalesActivo));
+    } catch {
+      return null;
+    }
+  }, [pasos, precios, totalEntra, decimalesActivo]);
+
+  // Any change to what is being quoted invalidates a run that was already shown.
+  const huella = `${activo}|${viables.map((cotizacion) => cotizacion.netOut).join(",")}`;
+  useEffect(() => setAvance(null), [huella]);
+
+  useEffect(() => {
+    if (avance === null || fills === null || avance > fills.length) return;
+    const temporizador = setTimeout(() => setAvance(avance + 1), PASO_MS);
+    return () => clearTimeout(temporizador);
+  }, [avance, fills]);
+
+  if (fills === null) return null;
+
+  const terminado = avance !== null && avance > fills.length;
+  const brutoTotal = viables.reduce((acc, cotizacion) => acc + cotizacion.grossOut, 0n);
+  const comisionesTotal = viables.reduce((acc, cotizacion) => acc + cotizacion.tradeFee, 0n);
+  const netoTotal = viables.reduce((acc, cotizacion) => acc + cotizacion.netOut, 0n);
+  const n = BigInt(viables.length);
+
+  const monto = (valor: bigint) => formatUnidades(valor, 18, 6);
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div className="equipo-encabezado" style={{ marginBottom: 8 }}>
+        <strong>Swap to USDC</strong>
+        <span className="chip">simulated</span>
+        {avance === null ? (
+          <button className="primario" onClick={() => setAvance(0)}>
+            Run simulated swap
+          </button>
+        ) : (
+          <button onClick={() => setAvance(0)} disabled={!terminado}>
+            Run again
+          </button>
+        )}
+      </div>
+
+      {avance !== null && (
+        <>
+          {fills.slice(0, Math.min(avance, fills.length)).map((fill) => (
+            <div className="resumen-fila" key={fill.step.symbol}>
+              <span className="etiqueta">
+                &#10003; {describirPaso(fill.step)} at {fill.price}
+              </span>
+              <span className="monto">
+                {monto(fill.spend)} {fill.spendAsset} &rarr; {monto(fill.receive)} {fill.receiveAsset}
+              </span>
+            </div>
+          ))}
+          {!terminado && <p className="subtitulo">Running...</p>}
+        </>
+      )}
+
+      {terminado && (
+        <>
+          <div className="resumen-fila">
+            <span className="etiqueta">Gross USDC after the trades</span>
+            <span className="monto">{usdc(brutoTotal)} USDC</span>
+          </div>
+          <div className="resumen-fila">
+            <span className="etiqueta">Trading fees ({(comisionVentaBps / 100).toFixed(2)}%)</span>
+            <span className="monto">&minus;{usdc(comisionesTotal)} USDC</span>
+          </div>
+          <div className="resumen-fila">
+            <span className="etiqueta">USDC withdrawal fee ({viables.length} x {usdc(comisionRetiro)})</span>
+            <span className="monto">&minus;{usdc(comisionRetiro * n)} USDC</span>
+          </div>
+          {costoBridge > 0n && (
+            <div className="resumen-fila">
+              <span className="etiqueta">Bridge to Linea ({viables.length} x {usdc(costoBridge)})</span>
+              <span className="monto">&minus;{usdc(costoBridge * n)} USDC</span>
+            </div>
+          )}
+          <div className="resumen-fila">
+            <span className="etiqueta">
+              <strong>Lands on Linea</strong>
+            </span>
+            <span className="monto">
+              <strong>{usdc(netoTotal)} USDC</strong>
+            </span>
+          </div>
+
+          <table style={{ marginTop: 12 }}>
+            <tbody>
+              {viables.map((cotizacion) => (
+                <tr key={cotizacion.partner}>
+                  <td className="mono" title={cotizacion.partner}>
+                    {acortarDireccion(cotizacion.partner)}
+                  </td>
+                  <td style={{ textAlign: "right" }} className="mono">
+                    {usdc(cotizacion.netOut)} USDC
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="aviso alerta" style={{ marginTop: 12, marginBottom: 0 }}>
+            SIMULATED: no order was sent and no funds moved. Real orders are placed with{" "}
+            <code>npm run hashkey</code>, and the USDC still has to be bridged from Ethereum to Linea.
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -394,7 +608,7 @@ function Fila({
       <td className="mono">{usdc(cotizacion.grossOut)}</td>
       <td className="mono">{viable ? usdc(cotizacion.tradeFee + cotizacion.withdrawalFee) : "-"}</td>
       <td style={{ textAlign: "right" }} className="mono">
-        {cotizacion.rejection === null ? usdc(cotizacion.netOut) : `no viable: ${MOTIVO[cotizacion.rejection]}`}
+        {cotizacion.rejection === null ? usdc(cotizacion.netOut) : `not viable: ${MOTIVO[cotizacion.rejection]}`}
       </td>
     </tr>
   );

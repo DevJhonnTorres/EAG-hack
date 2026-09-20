@@ -24,7 +24,7 @@ export function formatUnidades(wei: bigint, decimales = 18, precision = 6): stri
 export function parseUnidades(texto: string, decimales = 18): bigint {
   const limpio = texto.trim();
   if (limpio === "" || limpio === ".") return 0n;
-  if (!/^\d*\.?\d*$/.test(limpio)) throw new Error(`monto invalido: ${texto}`);
+  if (!/^\d*\.?\d*$/.test(limpio)) throw new Error(`invalid amount: ${texto}`);
 
   const [entera = "0", fraccionaria = ""] = limpio.split(".");
   const fraccionRellena = fraccionaria.padEnd(decimales, "0").slice(0, decimales);

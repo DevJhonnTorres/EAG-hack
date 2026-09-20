@@ -170,21 +170,21 @@ export function FirmaMultisig({
     try {
       recuperado = recoverAddress(hashCalculado, firma.signature);
     } catch {
-      setError("la firma no tiene un formato valido");
+      setError("the signature is not in a valid format");
       return;
     }
 
     if (!estado.owners.some((o) => o.toLowerCase() === recuperado.toLowerCase())) {
-      setError(`la firma recupera a ${acortarDireccion(recuperado)}, que no es dueno de este baul`);
+      setError(`the signature recovers to ${acortarDireccion(recuperado)}, which is not an owner of this vault`);
       return;
     }
     if (firmas.some((f) => f.signer.toLowerCase() === recuperado.toLowerCase())) {
-      setAviso(`${acortarDireccion(recuperado)} ya habia firmado`);
+      setAviso(`${acortarDireccion(recuperado)} had already signed`);
       return;
     }
 
     setFirmas((previas) => [...previas, { signer: recuperado, signature: firma.signature }]);
-    setAviso(`firma de ${acortarDireccion(recuperado)} aceptada`);
+    setAviso(`signature from ${acortarDireccion(recuperado)} accepted`);
   };
 
   const ejecutar = async () => {
@@ -210,7 +210,7 @@ export function FirmaMultisig({
       );
       setTxHash(tx.hash);
       await tx.wait();
-      setAviso("liquidacion ejecutada");
+      setAviso("settlement executed");
       setFirmas([]);
       await leerSafe();
     } catch (causa) {
@@ -229,41 +229,41 @@ export function FirmaMultisig({
   return (
     <section className="tarjeta">
       <div className="equipo-encabezado" style={{ marginBottom: 4 }}>
-        <h2 style={{ margin: 0 }}>Firma del multisig</h2>
+        <h2 style={{ margin: 0 }}>Multisig signature</h2>
         {cuenta ? (
           <span className="chip">
-            {acortarDireccion(cuenta)} {esDueno ? "· dueno" : "· no es dueno"}
+            {acortarDireccion(cuenta)} {esDueno ? "· owner" : "· not an owner"}
           </span>
         ) : (
           <button className="primario" onClick={() => void conectarWallet()} disabled={ocupado}>
-            Conectar wallet
+            Connect wallet
           </button>
         )}
       </div>
       <p className="subtitulo">
-        Los socios aprueban el reparto firmando con su propia wallet. Ninguno puede liquidar solo.
+        Partners approve the payout by signing with their own wallet. None of them can settle alone.
       </p>
 
       {errorLectura && (
-        <div className="aviso error">No se pudo leer el baul en la cadena: {errorLectura}</div>
+        <div className="aviso error">Could not read the vault on-chain: {errorLectura}</div>
       )}
 
       {estado && (
         <>
           <div className="resumen-fila">
-            <span className="etiqueta">Saldo del baul</span>
+            <span className="etiqueta">Vault balance</span>
             <span className="monto">
               {formatUnidades(estado.balance)} {cadena.moneda}
             </span>
           </div>
           <div className="resumen-fila">
-            <span className="etiqueta">Firmas necesarias</span>
+            <span className="etiqueta">Signatures needed</span>
             <span className="monto">
-              {firmas.length} de {estado.threshold}
+              {firmas.length} of {estado.threshold}
             </span>
           </div>
           <div className="resumen-fila">
-            <span className="etiqueta">Nonce del baul</span>
+            <span className="etiqueta">Vault nonce</span>
             <span className="monto">{estado.nonce.toString()}</span>
           </div>
         </>
@@ -277,21 +277,21 @@ export function FirmaMultisig({
       {hashesCoinciden !== null && (
         <div className={`aviso ${hashesCoinciden ? "ok" : "error"}`} style={{ marginTop: 14 }}>
           {hashesCoinciden
-            ? "El hash a firmar coincide con el que devuelve el contrato del baul."
-            : "El hash calculado NO coincide con el del contrato. No firmes: el Safe lo rechazaria."}
+            ? "The hash to sign matches the one the vault contract returns."
+            : "The computed hash does NOT match the contract's. Do not sign: the Safe would reject it."}
         </div>
       )}
 
       {estado && settlement && !fondosSuficientes && (
         <div className="aviso alerta">
-          El baul tiene {formatUnidades(estado.balance)} {cadena.moneda} y el reparto necesita{" "}
-          {formatUnidades(settlement.gross)}. Transferile fondos antes de liquidar.
+          The vault holds {formatUnidades(estado.balance)} {cadena.moneda} and the payout needs{" "}
+          {formatUnidades(settlement.gross)}. Send it funds before settling.
         </div>
       )}
 
       {hashCalculado && (
         <>
-          <label style={{ marginTop: 12 }}>Hash a firmar</label>
+          <label style={{ marginTop: 12 }}>Hash to sign</label>
           <div className="codigo" style={{ maxHeight: 60 }}>
             {hashCalculado}
           </div>
@@ -301,11 +301,11 @@ export function FirmaMultisig({
       {cuenta && (
         <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
           <button onClick={() => void firmar()} disabled={ocupado || !esDueno || !hashesCoinciden}>
-            Firmar con esta wallet
+            Sign with this wallet
           </button>
           {estado && firmas.length >= estado.threshold && (
             <button className="primario" onClick={() => void ejecutar()} disabled={ocupado || !fondosSuficientes}>
-              Ejecutar liquidacion
+              Execute settlement
             </button>
           )}
         </div>
@@ -313,7 +313,7 @@ export function FirmaMultisig({
 
       {!haySoporteDeWallet() && (
         <div className="aviso alerta" style={{ marginTop: 14 }}>
-          No se detecto una wallet en este navegador. Instala MetaMask para firmar.
+          No wallet detected in this browser. Install MetaMask to sign.
         </div>
       )}
 
@@ -321,8 +321,8 @@ export function FirmaMultisig({
         <table style={{ marginTop: 16 }}>
           <thead>
             <tr>
-              <th>Firmante</th>
-              <th style={{ textAlign: "right" }}>Firma</th>
+              <th>Signer</th>
+              <th style={{ textAlign: "right" }}>Signature</th>
             </tr>
           </thead>
           <tbody>
@@ -331,7 +331,7 @@ export function FirmaMultisig({
                 <td className="mono">{acortarDireccion(firma.signer)}</td>
                 <td style={{ textAlign: "right" }}>
                   <button onClick={() => void navigator.clipboard?.writeText(firma.signature)}>
-                    copiar
+                    copy
                   </button>
                 </td>
               </tr>
@@ -344,7 +344,7 @@ export function FirmaMultisig({
         Los socios suelen estar en dispositivos distintos. Cada uno firma en el suyo y pasa
         su firma; no hace falta un servidor intermediario para juntarlas.
       */}
-      <label style={{ marginTop: 16 }}>Pegar la firma del otro socio</label>
+      <label style={{ marginTop: 16 }}>Paste the other partner's signature</label>
       <div style={{ display: "flex", gap: 8 }}>
         <input
           className="mono"
@@ -360,7 +360,7 @@ export function FirmaMultisig({
           }}
           disabled={pegada.trim().length === 0}
         >
-          Agregar
+          Add
         </button>
       </div>
 
@@ -377,19 +377,19 @@ export function FirmaMultisig({
             puede reintentar el cambio, o agregar la cadena a mano con estos datos.
             Quedarse sin recurso frente a una wallet testaruda no es una opcion.
           */}
-          {error.includes("cadena") && (
+          {error.includes("chain") && (
             <div style={{ marginTop: 10 }}>
               <button onClick={() => void asegurarCadena(cadena).then(() => setError(null), (c) => setError(String(c)))}>
-                Reintentar el cambio a {cadena.nombre}
+                Retry switching to {cadena.nombre}
               </button>
               <div className="codigo" style={{ marginTop: 10, maxHeight: 120 }}>
-                Red: {cadena.nombre}
+                Network: {cadena.nombre}
                 <br />
                 RPC: {cadena.rpc}
                 <br />
                 Chain ID: {cadena.chainId}
                 <br />
-                Moneda: {cadena.moneda}
+                Currency: {cadena.moneda}
                 <br />
                 Explorer: {cadena.explorer}
               </div>
@@ -399,9 +399,9 @@ export function FirmaMultisig({
       )}
       {txHash && (
         <div className="aviso ok" style={{ marginTop: 14, marginBottom: 0 }}>
-          Transaccion enviada:{" "}
+          Transaction sent:{" "}
           <a href={`${cadena.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
-            verla en Blockscout
+            view on Blockscout
           </a>
         </div>
       )}

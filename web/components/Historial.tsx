@@ -5,10 +5,10 @@ import { cuadra, fetchHistorial, type LiquidacionHistorica } from "@hashpool/orc
 import { acortarDireccion, formatUnidades } from "@/lib/format";
 
 const ETIQUETA_ROL: Record<string, string> = {
-  ENERGY: "Luz",
-  MAINTENANCE: "Mantenimiento",
-  PARTNER: "Socio",
-  NONE: "Desconocido",
+  ENERGY: "Power",
+  MAINTENANCE: "Maintenance",
+  PARTNER: "Partner",
+  NONE: "Unknown",
 };
 
 const CLASE_PUNTO: Record<string, string> = {
@@ -56,32 +56,30 @@ export function Historial({
   return (
     <section className="tarjeta">
       <div className="equipo-encabezado" style={{ marginBottom: 4 }}>
-        <h2 style={{ margin: 0 }}>Historial on-chain</h2>
+        <h2 style={{ margin: 0 }}>On-chain history</h2>
         <button onClick={() => void cargar()} disabled={cargando}>
-          {cargando ? "Leyendo..." : "Actualizar"}
+          {cargando ? "Reading..." : "Refresh"}
         </button>
       </div>
       <p className="subtitulo">
-        Leido de los eventos del contrato via Blockscout. No hay servidor propio guardando esto: si esta
-        pantalla desapareciera, los mismos numeros siguen en la cadena.
+        Read from the contract's events via Blockscout. There is no server of our own storing this: if this screen disappeared, the same numbers would still be on-chain.
       </p>
 
       {error && (
         <div className="aviso error" style={{ marginBottom: 0 }}>
-          No se pudo leer el historial: {error}
+          Could not read the history: {error}
         </div>
       )}
 
       {!error && liquidaciones !== null && liquidaciones.length === 0 && (
         <div className="aviso alerta" style={{ marginBottom: 0 }}>
-          Todavia no hay liquidaciones ejecutadas en este pool. En cuanto los socios firmen la primera, va a
-          aparecer aca leida directamente de la cadena.
+          No settlements have been executed in this pool yet. As soon as the partners sign the first one, it will show up here, read straight from the chain.
         </div>
       )}
 
       {!error && liquidaciones === null && !cargando && (
         <p className="subtitulo" style={{ margin: 0 }}>
-          Sin datos.
+          No data.
         </p>
       )}
 
@@ -90,13 +88,13 @@ export function Historial({
         return (
           <div className="equipo" key={`${liquidacion.epochId}-${liquidacion.txHash}`}>
             <div className="equipo-encabezado">
-              <strong>Periodo #{liquidacion.epochId}</strong>
+              <strong>Period #{liquidacion.epochId}</strong>
               <span className="chip">
                 {formatUnidades(liquidacion.gross)} {moneda}
               </span>
               {liquidacion.txHash && (
                 <a href={`${explorerUrl}/tx/${liquidacion.txHash}`} target="_blank" rel="noreferrer">
-                  ver tx
+                  view tx
                 </a>
               )}
             </div>
@@ -108,7 +106,7 @@ export function Historial({
                     <td>
                       <span className={`punto ${CLASE_PUNTO[pago.role] ?? "socio"}`} />
                       {ETIQUETA_ROL[pago.role] ?? pago.role}
-                      {pago.acreditado && " (acreditado, sin retirar)"}
+                      {pago.acreditado && " (credited, not withdrawn)"}
                     </td>
                     <td className="mono" title={pago.to}>
                       <a href={`${explorerUrl}/address/${pago.to}`} target="_blank" rel="noreferrer">
@@ -125,13 +123,13 @@ export function Historial({
 
             <div className={`aviso ${cierra ? "ok" : "alerta"}`} style={{ margin: "12px 0 0" }}>
               {cierra
-                ? "Verificado contra la cadena: los pagos suman exactamente el bruto."
-                : "Los eventos leidos no suman el bruto. Puede faltar una pagina de logs por cargar."}
+                ? "Verified against the chain: the payouts add up exactly to the gross."
+                : "The events read do not add up to the gross. A page of logs may still be missing."}
             </div>
 
             {liquidacion.telemetryHash && (
               <>
-                <label style={{ marginTop: 12 }}>Telemetria anclada</label>
+                <label style={{ marginTop: 12 }}>Anchored telemetry</label>
                 <div className="codigo" style={{ maxHeight: 60 }}>
                   {liquidacion.telemetryHash}
                 </div>

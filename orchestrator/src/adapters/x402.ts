@@ -99,7 +99,7 @@ export class X402Error extends Error {
 
 export class NoAcceptablePaymentError extends X402Error {
   constructor(network: string, asset: string) {
-    super(`el vendedor no acepta pagos en ${asset} sobre ${network}`);
+    super(`the seller does not accept payments in ${asset} on ${network}`);
     this.name = "NoAcceptablePaymentError";
   }
 }
@@ -116,7 +116,7 @@ function fromBase64<T>(texto: string): T {
   try {
     return JSON.parse(Buffer.from(texto, "base64").toString("utf8")) as T;
   } catch (causa) {
-    throw new X402Error(`no se pudo decodificar el header: ${String(causa)}`);
+    throw new X402Error(`could not decode the header: ${String(causa)}`);
   }
 }
 
@@ -156,10 +156,10 @@ export function erc3009Domain(requisito: PaymentRequirement, chainId: number) {
 export function chainIdDeRed(network: string): number {
   const [namespace, referencia] = network.split(":");
   if (namespace !== "eip155" || !referencia) {
-    throw new X402Error(`solo se soportan redes EVM (eip155), llego "${network}"`);
+    throw new X402Error(`only EVM networks (eip155) are supported, got "${network}"`);
   }
   const chainId = Number(referencia);
-  if (!Number.isInteger(chainId)) throw new X402Error(`chainId invalido en "${network}"`);
+  if (!Number.isInteger(chainId)) throw new X402Error(`invalid chainId in "${network}"`);
   return chainId;
 }
 
@@ -245,7 +245,7 @@ export interface RespuestaPagada {
 
 export class PrecioExcesivoError extends X402Error {
   constructor(pedido: bigint, tope: bigint) {
-    super(`el vendedor pide ${pedido} y el tope por llamada es ${tope}`);
+    super(`the seller asks for ${pedido} and the per-call cap is ${tope}`);
     this.name = "PrecioExcesivoError";
   }
 }
@@ -270,7 +270,7 @@ export class X402Client {
     if (primera.status !== 402) return {response: primera};
 
     const header = primera.headers.get(HEADER_PAYMENT_REQUIRED);
-    if (!header) throw new X402Error("el vendedor respondio 402 sin decir como pagarle");
+    if (!header) throw new X402Error("the seller answered 402 without saying how to pay");
 
     const requisito = this.#elegirRequisito(decodePaymentRequired(header));
 
@@ -396,10 +396,10 @@ export function verificarPago(
   opciones: VerificarPagoOpciones = {},
 ): ResultadoVerificacion {
   if (pago.scheme !== requisito.scheme) {
-    return {valido: false, motivo: `esquema ${pago.scheme}, se esperaba ${requisito.scheme}`};
+    return {valido: false, motivo: `scheme ${pago.scheme}, expected ${requisito.scheme}`};
   }
   if (pago.network !== requisito.network) {
-    return {valido: false, motivo: `red ${pago.network}, se esperaba ${requisito.network}`};
+    return {valido: false, motivo: `network ${pago.network}, expected ${requisito.network}`};
   }
 
   const auth = pago.payload.authorization;
@@ -410,11 +410,11 @@ export function verificarPago(
     destino = getAddress(auth.to);
     esperado = getAddress(requisito.payTo);
   } catch {
-    return {valido: false, motivo: "la autorizacion trae una direccion malformada"};
+    return {valido: false, motivo: "the authorization carries a malformed address"};
   }
   // Sin esto, alguien podria firmar un pago valido dirigido a si mismo.
   if (destino !== esperado) {
-    return {valido: false, motivo: `el pago va a ${destino} y deberia ir a ${esperado}`};
+    return {valido: false, motivo: `the payment goes to ${destino} and should go to ${esperado}`};
   }
 
   let valor: bigint;
@@ -423,10 +423,10 @@ export function verificarPago(
     valor = BigInt(auth.value);
     pedido = BigInt(requisito.maxAmountRequired);
   } catch {
-    return {valido: false, motivo: "el monto de la autorizacion no es un entero"};
+    return {valido: false, motivo: "the authorization amount is not an integer"};
   }
   if (valor < pedido) {
-    return {valido: false, motivo: `autorizo ${valor} y el precio es ${pedido}`};
+    return {valido: false, motivo: `authorized ${valor} and the price is ${pedido}`};
   }
 
   const ahora = Math.floor((opciones.ahora?.() ?? Date.now()) / 1000);
@@ -434,20 +434,20 @@ export function verificarPago(
   // criterio: una autorizacion que aca parezca valida y alla revierta seria una
   // llamada entregada y no cobrada.
   if (ahora <= Number(auth.validAfter)) {
-    return {valido: false, motivo: "la autorizacion todavia no empezo a valer"};
+    return {valido: false, motivo: "the authorization is not valid yet"};
   }
   if (ahora >= Number(auth.validBefore)) {
-    return {valido: false, motivo: "la autorizacion vencio"};
+    return {valido: false, motivo: "the authorization has expired"};
   }
 
   let recuperado: string;
   try {
     recuperado = recoverAddress(authorizationDigest(requisito, auth), pago.payload.signature);
   } catch {
-    return {valido: false, motivo: "la firma no tiene un formato valido"};
+    return {valido: false, motivo: "the signature is not in a valid format"};
   }
   if (recuperado.toLowerCase() !== auth.from.toLowerCase()) {
-    return {valido: false, motivo: `la firma recupera a ${recuperado} y dice ser de ${auth.from}`};
+    return {valido: false, motivo: `the signature recovers to ${recuperado} and claims to be from ${auth.from}`};
   }
 
   return {valido: true, pagador: recuperado};

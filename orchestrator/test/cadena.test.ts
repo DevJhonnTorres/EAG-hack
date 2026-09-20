@@ -102,12 +102,12 @@ describe("mensajeDeWallet", () => {
       { code: "UNKNOWN_ERROR", error: { code: SOLICITUD_PENDIENTE, message: "already pending" } },
     );
     const mensaje = mensajeDeWallet(error);
-    expect(mensaje).toMatch(/solicitud abierta/);
+    expect(mensaje).toMatch(/open request/);
     expect(mensaje).not.toMatch(/coalesce/);
   });
 
   it("avisa cuando la persona rechazo la solicitud", () => {
-    expect(mensajeDeWallet(errorDeEthers(RECHAZADA_POR_LA_PERSONA))).toMatch(/Rechazaste/);
+    expect(mensajeDeWallet(errorDeEthers(RECHAZADA_POR_LA_PERSONA))).toMatch(/You rejected/);
   });
 
   it("conserva el mensaje original para cualquier otro fallo", () => {

@@ -4,12 +4,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "HashPool",
   description:
-    "Micro-pools de infraestructura: reparto de ganancias de mineria auditable, verificado on-chain.",
+    "Infrastructure micro-pools: auditable mining-reward splitting, verified on-chain.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );
