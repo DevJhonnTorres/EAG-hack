@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   SettlementBuilder,
   assertPublishable,
@@ -19,9 +19,11 @@ import {
   GPU_CATALOG,
   SEGUNDOS_POR_DIA,
   SEGUNDOS_POR_PERIODO,
+  tarifaParaElBruto,
 } from "@/lib/defaults";
 import { acortarDireccion, formatUnidades, formatearDuracion, parseUnidades, porcentaje } from "@/lib/format";
 import { buildSafeTransaction } from "@/lib/calldata";
+import { lectorDeCadena } from "@/lib/lector";
 import { Historial } from "@/components/Historial";
 import { FirmaMultisig } from "@/components/FirmaMultisig";
 import { Bridge } from "@/components/Bridge";
@@ -47,6 +49,25 @@ export default function Page() {
     "rig-b": { uptimeSeconds: SEGUNDOS_POR_PERIODO, rendimiento: 100 },
   });
   const [splitterAddress, setSplitterAddress] = useState<string>(CONTRATOS.splitter);
+  const [saldoBaul, setSaldoBaul] = useState<bigint | null>(null);
+
+  // Se lee el saldo del baul para poder ajustar la simulacion a fondos reales.
+  // No hace falta wallet: es una lectura publica de la cadena.
+  useEffect(() => {
+    let vigente = true;
+    lectorDeCadena(CADENA.rpc, 133)
+      .getBalance(CONTRATOS.baul)
+      .then((saldo) => {
+        if (vigente) setSaldoBaul(saldo);
+      })
+      .catch(() => {
+        // Sin saldo a la vista la pantalla sigue siendo usable con los valores
+        // por defecto; no vale la pena molestar con un error por esto.
+      });
+    return () => {
+      vigente = false;
+    };
+  }, []);
 
   const telemetria: EpochTelemetry = useMemo(
     () => ({
@@ -86,6 +107,23 @@ export default function Page() {
   }, [config, telemetria, gross, deudaArrastrada]);
 
   const telemetryHash = useMemo(() => hashTelemetry(telemetria), [telemetria]);
+
+  /**
+   * Lleva la simulacion a los fondos que el baul tiene de verdad.
+   *
+   * Los montos de testnet son arbitrarios, asi que una tarifa fija termina
+   * comiendose el periodo entero o volviendose invisible segun cuanto haya en
+   * el baul. Esto ajusta ambas cosas de una y evita tener que recalibrar a mano.
+   */
+  const ajustarAlSaldoDelBaul = () => {
+    if (saldoBaul === null || saldoBaul === 0n) return;
+    const consumo = (resultado.settlement?.contributions ?? []).reduce(
+      (acc, contribucion) => acc + contribucion.wallWattSeconds,
+      0n,
+    );
+    setGross(saldoBaul);
+    setConfig((previo) => ({ ...previo, tariffWeiPerKwh: tarifaParaElBruto(saldoBaul, consumo) }));
+  };
 
   const actualizarEquipo = (id: string, cambios: Partial<EstadoEquipo>) =>
     setEstados((previo) => ({
@@ -182,6 +220,8 @@ export default function Page() {
             setEpochId={setEpochId}
             deudaArrastrada={deudaArrastrada}
             setDeudaArrastrada={setDeudaArrastrada}
+            saldoBaul={saldoBaul}
+            ajustarAlSaldoDelBaul={ajustarAlSaldoDelBaul}
           />
           <Reparto resultado={resultado} config={config} />
           <Bridge settlement={resultado.settlement} />
@@ -419,6 +459,15 @@ function Equipos({
   );
 }
 
+/** Interpreta el texto de un campo sin lanzar mientras la persona escribe. */
+function parseUnidadesSegura(texto: string): bigint | null {
+  try {
+    return parseUnidades(texto);
+  } catch {
+    return null;
+  }
+}
+
 function Telemetria({
   config,
   estados,
@@ -429,6 +478,8 @@ function Telemetria({
   setEpochId,
   deudaArrastrada,
   setDeudaArrastrada,
+  saldoBaul,
+  ajustarAlSaldoDelBaul,
 }: {
   config: PoolConfig;
   estados: Record<string, EstadoEquipo>;
@@ -439,9 +490,16 @@ function Telemetria({
   setEpochId: (valor: number) => void;
   deudaArrastrada: bigint;
   setDeudaArrastrada: (valor: bigint) => void;
+  saldoBaul: bigint | null;
+  ajustarAlSaldoDelBaul: () => void;
 }) {
   const [brutoTexto, setBrutoTexto] = useState(formatUnidades(gross));
   const [deudaTexto, setDeudaTexto] = useState(formatUnidades(deudaArrastrada));
+
+  // Si el bruto cambio desde fuera (el boton de ajuste), el campo lo refleja.
+  useEffect(() => {
+    setBrutoTexto((texto) => (parseUnidadesSegura(texto) === gross ? texto : formatUnidades(gross)));
+  }, [gross]);
 
   return (
     <section className="tarjeta">
@@ -535,6 +593,12 @@ function Telemetria({
           </div>
         );
       })}
+
+      {saldoBaul !== null && saldoBaul > 0n && (
+        <button onClick={ajustarAlSaldoDelBaul} style={{ marginBottom: 14 }}>
+          Ajustar al saldo del baul ({formatUnidades(saldoBaul)} {CADENA.moneda})
+        </button>
+      )}
 
       <p className="subtitulo" style={{ margin: 0 }}>
         Bajar el encendido de un equipo es el caso que rompe cualquier planilla: ese socio aporta menos, pero

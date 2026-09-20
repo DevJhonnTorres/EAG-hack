@@ -35,20 +35,20 @@ export const RIGS_INICIALES: RigSpec[] = [
 
 export const CONFIG_INICIAL: PoolConfig = {
   rigs: RIGS_INICIALES,
-  // 0.00003 HSK por kWh.
+  // 0.000006 HSK por kWh: calibrado para que la luz pese ~23% del bruto inicial.
   //
-  // Calibrado contra el saldo real del baul, no contra un numero redondo: el
-  // equipo del pool consume unos 153 kWh por semana, asi que la luz sale ~23%
-  // de un bruto de 0.02 HSK. Con una tarifa pensada para un bruto mayor, la
-  // factura se comeria el periodo entero y los socios cobrarian cero: seria un
-  // reparto correcto (un periodo en perdida) pero una demostracion enganosa.
+  // En un pool real este numero lo pone la distribuidora. Aca es un valor de
+  // demostracion, porque los montos de testnet son arbitrarios: con una tarifa
+  // pensada para un bruto mayor, la factura se comeria el periodo entero y los
+  // socios cobrarian cero. Seria un reparto correcto, porque es un periodo en
+  // perdida, pero una demostracion enganosa.
   //
-  // Es un valor de demostracion y se edita desde la pantalla. Si cambia el
-  // saldo del baul, conviene ajustarlo para que el reparto siga siendo legible.
-  tariffWeiPerKwh: 30_000_000_000_000n,
+  // El boton "ajustar al saldo del baul" recalcula esto contra los fondos que
+  // el baul tiene en la cadena, para no tener que tocarlo a mano cada vez.
+  tariffWeiPerKwh: 6_000_000_000_000n,
   maintenanceBps: 500,
   energyWallet: "0xcd23dAd3cDb7eb7046829f033c92107fC60F316b",
-  maintenanceVault: "0x854404820b29eACF86697550ECade5de93F28501",
+  maintenanceVault: "0xB761E312fc8176f1faeEE750a985B0c43Ffa75d6",
 };
 
 /**
@@ -56,7 +56,7 @@ export const CONFIG_INICIAL: PoolConfig = {
  * cadena. Asi el reparto que se previsualiza es uno que el baul puede pagar de
  * verdad, y el boton de ejecutar no aparece deshabilitado por falta de fondos.
  */
-export const BRUTO_INICIAL = 2n * 10n ** 16n;
+export const BRUTO_INICIAL = 4n * 10n ** 15n;
 
 /** Campos editables del bridge de un activo. Son texto: se convierten a enteros al calcular. */
 export interface CamposBridge {
@@ -114,6 +114,22 @@ export const CADENAS = {
 
 export type ChainId = keyof typeof CADENAS;
 
+/** Porcion del bruto que la luz deberia representar en la demostracion. */
+export const LUZ_OBJETIVO_BPS = 2_296n;
+
+/**
+ * Tarifa que hace que la energia pese `LUZ_OBJETIVO_BPS` de un bruto dado.
+ *
+ * Existe para que la pantalla se adapte a los fondos que el baul tenga en la
+ * cadena, en vez de obligar a recalibrar un numero a mano cada vez que cambia
+ * el saldo. Un pool real no hace esto: toma la tarifa de la distribuidora.
+ */
+export function tarifaParaElBruto(gross: bigint, wallWattSeconds: bigint): bigint {
+  if (wallWattSeconds === 0n) return 0n;
+  // wei/kWh = (bruto * objetivo / 10000) * (vatios-segundo por kWh) / consumo
+  return (gross * LUZ_OBJETIVO_BPS * 3_600_000n) / (10_000n * wallWattSeconds);
+}
+
 /**
  * Contratos del pool desplegados y verificados en HSKChain testnet.
  * Desplegados con `forge script script/DeployPool.s.sol:DeployPool`.
@@ -127,11 +143,11 @@ export const CONTRATOS = {
    * entre socios usaria 2 de 2, que es lo que impide que uno mueva los fondos
    * por su cuenta, y el codigo es exactamente el mismo.
    */
-  baul: "0xb6b534Fe7c8B5ef35b4FB33Ca95288df16823fde",
+  baul: "0x9e77152369d642F327Dc7B3c2F468402EFd107Ac",
   /** Segundo Safe, con el mismo dueno, que acumula el fondo de mantenimiento. */
-  vaultMantenimiento: "0x854404820b29eACF86697550ECade5de93F28501",
-  registry: "0x2BC8E7B9Db2d46479C35a31112BbD6b8e535B390",
-  splitter: "0xB8c0C32385577620fFecfd59DD6Dd2863226F1F1",
+  vaultMantenimiento: "0xB761E312fc8176f1faeEE750a985B0c43Ffa75d6",
+  registry: "0x9444c186EA64BcB22D80D77B532d1c65b33238Eb",
+  splitter: "0xC6f7406Bd215b48898C3B9F0eb0C3F91f8f89D6e",
   /** Token ERC-3009 con el que el agente paga sus insumos de datos via x402. */
   credito: "0x891a0838Af855147b5E911576E2224c8a23280e4",
 } as const;
