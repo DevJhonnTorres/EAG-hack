@@ -9,6 +9,7 @@ import {
   encodePaymentRequired,
   encodeSettlementResponse,
   liquidarPago,
+  saldoDe,
   verificarPago,
   type PaymentRequirement,
   type SettlementResponse,
@@ -156,6 +157,32 @@ export async function GET(request: Request): Promise<Response> {
     // Si el nodo no responde, se sigue adelante: la cadena volvera a rechazar la
     // autorizacion repetida al liquidar. Es preferible a negar el servicio por una
     // consulta de lectura caida.
+  }
+
+  // Sin este chequeo, cualquiera podria firmar autorizaciones validas desde cuentas
+  // vacias: pasarian la verificacion, el servidor intentaria cobrarlas, y cada intento
+  // fallido le costaria gas. Una lectura es mucho mas barata que ese riesgo.
+  try {
+    const saldo = await saldoDe(lector, req.asset, pago.payload.authorization.from);
+    if (saldo < BigInt(pago.payload.authorization.value)) {
+      return new Response(
+        JSON.stringify({ x402Version: X402_VERSION, error: "insufficient payer balance", accepts: [req] }),
+        {
+          status: 402,
+          headers: {
+            "content-type": "application/json",
+            [HEADER_PAYMENT_REQUIRED]: encodePaymentRequired({ x402Version: X402_VERSION, accepts: [req] }),
+            [HEADER_PAYMENT_RESPONSE]: encodeSettlementResponse({
+              success: false,
+              network: RED,
+              errorReason: "el pagador no tiene saldo para cubrir este pago",
+            }),
+          },
+        },
+      );
+    }
+  } catch {
+    // Nodo caido: se sigue adelante. La cadena rechazara el cobro de todas formas.
   }
 
   const claveLiquidador = process.env["X402_SETTLER_KEY"];

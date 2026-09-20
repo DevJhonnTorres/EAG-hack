@@ -318,6 +318,7 @@ export class X402Client {
 const ERC3009_ABI = [
   "function transferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint8 v,bytes32 r,bytes32 s)",
   "function authorizationState(address authorizer, bytes32 nonce) view returns (bool)",
+  "function balanceOf(address account) view returns (uint256)",
 ] as const;
 
 /**
@@ -450,6 +451,19 @@ export function verificarPago(
   }
 
   return {valido: true, pagador: recuperado};
+}
+
+/**
+ * Saldo del pagador en el token del pago.
+ *
+ * El vendedor lo consulta antes de liquidar. Sin este chequeo, cualquiera podria
+ * firmar autorizaciones perfectamente validas desde cuentas vacias: pasarian la
+ * verificacion, el vendedor intentaria cobrarlas y cada intento fallido le
+ * costaria gas. Una lectura es mucho mas barata que ese riesgo.
+ */
+export async function saldoDe(runner: ContractRunner, asset: string, cuenta: string): Promise<bigint> {
+  const token = new Contract(getAddress(asset), ERC3009_ABI, runner);
+  return (await token.getFunction("balanceOf")(cuenta)) as bigint;
 }
 
 /** Consulta si la autorizacion ya fue consumida en la cadena. */
