@@ -41,8 +41,7 @@ export const CONFIG_INICIAL: PoolConfig = {
   tariffWeiPerKwh: 1_500_000_000_000_000n,
   maintenanceBps: 500,
   energyWallet: "0xcd23dAd3cDb7eb7046829f033c92107fC60F316b",
-  // Se completa con la direccion del segundo Safe una vez desplegado el pool.
-  maintenanceVault: "0x0000000000000000000000000000000000000000",
+  maintenanceVault: "0x8cFA796c87e83963052263A06329F1Ef52DE5653",
 };
 
 /** Bruto inicial simulado: 1 HSK minado en la semana. */
@@ -70,3 +69,16 @@ export const CADENAS = {
 } as const;
 
 export type ChainId = keyof typeof CADENAS;
+
+/**
+ * Contratos del pool desplegados y verificados en HSKChain testnet.
+ * Desplegados con `forge script script/DeployPool.s.sol:DeployPool`.
+ */
+export const CONTRATOS = {
+  /** Gnosis Safe 2-de-2 que custodia las ganancias. */
+  baul: "0x4C9F30792C7f0e93d73334Db13a94565153A0709",
+  /** Segundo Safe, con los mismos duenos, que acumula el fondo de mantenimiento. */
+  vaultMantenimiento: "0x8cFA796c87e83963052263A06329F1Ef52DE5653",
+  registry: "0xEB75bfBb8961F193BC7acd742f85e50bA97aD40f",
+  splitter: "0x333FAd08F22752896C55C052352AcE6C6Ab620B7",
+} as const;

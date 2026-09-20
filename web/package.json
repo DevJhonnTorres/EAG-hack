@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prebuild": "tsc -p ../orchestrator/tsconfig.json"
   },
   "dependencies": {
     "@hashpool/orchestrator": "*",

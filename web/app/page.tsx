@@ -15,6 +15,7 @@ import {
   BRUTO_INICIAL,
   CADENAS,
   CONFIG_INICIAL,
+  CONTRATOS,
   GPU_CATALOG,
   SEGUNDOS_POR_DIA,
   SEGUNDOS_POR_PERIODO,
@@ -42,7 +43,7 @@ export default function Page() {
     "rig-a": { uptimeSeconds: SEGUNDOS_POR_PERIODO, rendimiento: 100 },
     "rig-b": { uptimeSeconds: SEGUNDOS_POR_PERIODO, rendimiento: 100 },
   });
-  const [splitterAddress, setSplitterAddress] = useState("0x0000000000000000000000000000000000000000");
+  const [splitterAddress, setSplitterAddress] = useState<string>(CONTRATOS.splitter);
 
   const telemetria: EpochTelemetry = useMemo(
     () => ({
@@ -140,6 +141,18 @@ export default function Page() {
           </span>
           <span className="chip">
             Periodo <strong>#{epochId}</strong>
+          </span>
+          <span className="chip">
+            Baul{" "}
+            <a href={`${CADENA.explorer}/address/${CONTRATOS.baul}`} target="_blank" rel="noreferrer">
+              {acortarDireccion(CONTRATOS.baul)}
+            </a>
+          </span>
+          <span className="chip">
+            Splitter{" "}
+            <a href={`${CADENA.explorer}/address/${CONTRATOS.splitter}`} target="_blank" rel="noreferrer">
+              {acortarDireccion(CONTRATOS.splitter)}
+            </a>
           </span>
         </div>
       </header>
